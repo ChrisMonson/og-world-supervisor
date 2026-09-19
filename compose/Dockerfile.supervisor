@@ -1,0 +1,9 @@
+FROM alpine:3
+
+# Everything the supervisor needs to gate, deploy and revert: git for history,
+# docker's client to drive the world container, python for the gate's checks.
+RUN apk add --no-cache bash git curl docker-cli python3 py3-pip sqlite \
+    && pip install --break-system-packages --no-cache-dir websockets
+
+WORKDIR /supervisor
+ENTRYPOINT ["/bin/bash"]

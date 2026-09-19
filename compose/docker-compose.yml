@@ -1,0 +1,59 @@
+# Two planes that never share a process.
+#
+# The world runs code the caretaker wrote and is exposed to players, so it is
+# assumed broken at any moment. The supervisor is what survives that: it holds
+# git, the gate, the rollback machinery and the deadman switch.
+#
+# The docker socket goes to the supervisor and to nothing else. Mounted into the
+# world container it would be root on the host in one call.
+
+services:
+  world:
+    image: og-world:${OG_SHA:-latest}
+    container_name: og-world
+    restart: unless-stopped
+    ports:
+      - "${LIVE_PORT:-5080}:8080"
+    volumes:
+      - og-data:/data
+      - og-identity:/identity
+    environment:
+      OG_COMMIT: ${OG_SHA:-unknown}
+    mem_limit: 1g
+    pids_limit: 512
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  supervisor:
+    build:
+      context: ..
+      dockerfile: compose/Dockerfile.supervisor
+    container_name: og-supervisor
+    restart: unless-stopped
+    volumes:
+      # Trusted: the supervisor manages the world's container.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../../og-world:/world-repo
+      - ..:/supervisor
+      - og-supervisor-state:/supervisor/state
+    environment:
+      WORLD_REPO: /world-repo
+      LIVE_PORT: 8080
+      GRACE_SECONDS: ${GRACE_SECONDS:-300}
+    depends_on:
+      - world
+    command: ["/supervisor/bin/watchdog.sh"]
+
+volumes:
+  og-data:
+  og-identity:
+  og-supervisor-state:
