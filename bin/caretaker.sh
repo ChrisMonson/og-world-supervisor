@@ -15,4 +15,5 @@ export WORLD_URL="${WORLD_URL:-http://localhost:$LIVE_PORT}"
 
 [ -n "$CARETAKER_TOKEN" ] || fail "no caretaker token; run bin/init-keys.sh"
 
-exec python3 "$SUPERVISOR_DIR/agent/loop.py" "$@"
+# Unbuffered, so a log being tailed shows turns as they happen.
+exec python3 -u "$SUPERVISOR_DIR/agent/loop.py" "$@"

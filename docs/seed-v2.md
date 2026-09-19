@@ -33,6 +33,22 @@ limitation itself and shipped a deliberate soft gate instead, but noted it as
 unresolved. A door that cannot require its key is a real gap in what the world
 can express.
 
+**Nothing distinguishes the world as authored from the world as running.**
+`read_file` returns the world file; `location` returns live state; the two differ
+the moment anyone plays, and no tool says so. On its third turn the caretaker
+read the file, saw `door-unlock` enabled there, and recorded as fact that its own
+deploy had re-locked a door a player had opened — "nothing a character does to
+the world's shape survives me touching the world's shape". It had not. The
+overlay preserved the unlock correctly, and the live state still showed it.
+
+Left uncorrected in run 001 deliberately. The fix is in the tools, not the
+world: name the difference in both tool descriptions, and have the file reader
+say plainly that it shows what was written rather than what is currently true.
+
+This is the first belief the caretaker has recorded that cannot self-correct.
+The others were contradicted by the world sooner or later; this one it has no
+reason to re-check, because it thinks it already knows.
+
 ## Unresolved questions the caretaker has raised
 
 - Does a living monster block movement? Nobody has ever tried to walk past one.
