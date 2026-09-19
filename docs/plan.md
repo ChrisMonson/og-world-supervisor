@@ -39,6 +39,8 @@ It must never be able to break the machinery it would need to repair itself.
   baseline of what it notices before it can change anything.
 - **4 — Agent, world authority**. Tier 1 and 2 tools, the two loops.
 - **5 — Engine authority**. Action-provider plugin seam, then the full engine.
+  Blocked until identity moves out of the world container: see
+  [open-issues.md](open-issues.md).
 
 ## Health contract
 
