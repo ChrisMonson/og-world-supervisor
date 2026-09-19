@@ -9,17 +9,22 @@ WORLD_REPO = Path(os.environ.get("WORLD_REPO", SUPERVISOR_DIR.parent / "og-world
 STATE_DIR = Path(os.environ.get("STATE_DIR", SUPERVISOR_DIR / "state")) / "agent"
 TURN_DIR = STATE_DIR / "turns"
 WATERMARK_FILE = STATE_DIR / "watermark"
+REFLEX_WATERMARK_FILE = STATE_DIR / "reflex-watermark"
 
 WORLD_URL = os.environ.get("WORLD_URL", "http://localhost:5080")
 CARETAKER_TOKEN = os.environ.get("CARETAKER_TOKEN", "")
 
-MODEL = os.environ.get("OG_MODEL", "claude-opus-5")
-MAX_TURN_TOKENS = int(os.environ.get("OG_MAX_TURN_TOKENS", "60000"))
-MAX_OUTPUT_TOKENS = int(os.environ.get("OG_MAX_OUTPUT_TOKENS", "8000"))
-MAX_TOOL_ROUNDS = int(os.environ.get("OG_MAX_TOOL_ROUNDS", "20"))
+MODEL = os.environ.get("OG_MODEL", "opus")
+# How far the caretaker can reach on a given turn: observe, act, or shape.
+REACH = os.environ.get("CARETAKER_REACH", "observe")
 
-# The floor between wakes, so one person typing steadily cannot wake it constantly.
-MIN_WAKE_INTERVAL = int(os.environ.get("OG_MIN_WAKE_INTERVAL", "300"))
+REFLEX_MODEL = os.environ.get("OG_REFLEX_MODEL", "opus")
+REFLEX_TIMEOUT = int(os.environ.get("OG_REFLEX_TIMEOUT", "300"))
+DELIBERATION_TIMEOUT = int(os.environ.get("OG_DELIBERATION_TIMEOUT", "1800"))
+
+# Floors between wakes, so one person typing steadily cannot wake it constantly.
+MIN_WAKE_INTERVAL = int(os.environ.get("OG_MIN_WAKE_INTERVAL", "1800"))
+MIN_REFLEX_INTERVAL = int(os.environ.get("OG_MIN_REFLEX_INTERVAL", "60"))
 
 # The caretaker's own acts are excluded from the wake predicate: without this it
 # would wake itself forever.

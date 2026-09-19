@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""One turn of the caretaker.
+"""The caretaker's turns.
 
-Wake if something has happened, hand it what changed, let it look further, and
-keep whatever it writes down.
+Two tempos.
 
-    loop.py                 one turn, if the predicate says so
-    loop.py --force         one turn regardless
-    loop.py --dry-run       assemble the turn and print it; call nothing
-    loop.py --watch         keep checking, on the wake interval
+  reflex        wakes often, briefly, may speak and may help someone
+  deliberate    wakes rarely, at length, may reshape the world, keeps a journal
+
+Without the split, whichever the caretaker found more pressing would eat the
+whole budget: answering people would starve building, or building would leave
+people talking to nothing.
 """
 
 import argparse
@@ -17,167 +18,158 @@ import time
 from datetime import datetime, timezone
 
 import config
+import deploys
+import driver
 import journal
-import tools
 import wake
 import world_client
 
-
-def briefing():
-    return (config.SUPERVISOR_DIR / "agent" / "briefing.md").read_text()
+AGENT_DIR = config.SUPERVISOR_DIR / "agent"
 
 
-def opening_message(digest, mark, recent):
-    """The turn's context: what changed, and what it last wrote."""
+def briefing(kind):
+    name = "briefing.md" if kind == "deliberate" else "briefing-reflex.md"
+    return (AGENT_DIR / name).read_text()
+
+
+def opening(kind, digest, mark, recent):
     parts = [
         f"You are waking at {datetime.now(timezone.utc).isoformat(timespec='seconds')}.",
         "",
         f"You last looked at event {mark['seq']}. The world is now at event {digest['toSeq']}.",
         "",
-        "Here is what has changed since. Everything in it can be looked into further,",
-        "and the raw event log is always there in full if you want it.",
+        "What has changed since:",
         "",
         "```json",
         json.dumps(digest, indent=2, default=str),
         "```",
     ]
 
+    if kind == "deliberate":
+        standing = deploys.history(limit=10)
+        parts += [
+            "",
+            "Where the world's history stands:",
+            "",
+            "```json",
+            json.dumps(standing, indent=2, default=str),
+            "```",
+        ]
+
+        stepped_in = deploys.intervention()
+
+        if stepped_in:
+            parts += [
+                "",
+                "Something had to step in since you last looked:",
+                "",
+                "```json",
+                stepped_in,
+                "```",
+            ]
+
     if recent:
         parts += ["", "Your last entries, oldest first:", ""]
         for entry in recent:
             parts += [f"--- {entry['name']} ---", entry["text"].strip(), ""]
-    else:
+    elif kind == "deliberate":
         parts += ["", "You have not written anything yet. This is your first look at the world."]
 
-    parts += [
-        "",
-        "Look into whatever is worth looking into, then write your journal entry as",
-        "your final message. The entry is just your reply — do not wrap it in JSON or",
-        "call a tool to save it.",
-    ]
+    if kind == "deliberate":
+        parts += [
+            "",
+            "Look into whatever is worth looking into, do what you judge worth doing,",
+            "then write your journal entry as your final message. The entry is just",
+            "your reply — do not wrap it in JSON or call a tool to save it.",
+        ]
+    else:
+        parts += [
+            "",
+            "Decide whether anything here wants a response now. Then reply with one",
+            "short line saying what you did, or that you let it be.",
+        ]
 
     return "\n".join(parts)
 
 
-def run_turn(dry_run=False, force=False):
-    should, reason, mark = wake.should_wake(force=force)
-    print(f"wake: {reason}")
+def take_turn(kind, dry_run=False, force=False):
+    reflex = kind == "reflex"
+
+    should, reason, mark = wake.should_wake(reflex=reflex, force=force)
+    print(f"[{kind}] wake: {reason}")
 
     if not should and not dry_run:
         return None
 
     digest = world_client.digest(since=mark["seq"])
-    recent = journal.entries(limit=3)
-    opening = opening_message(digest, mark, recent)
+    recent = journal.entries(limit=2 if reflex else 3)
+
+    system = briefing(kind)
+    first = opening(kind, digest, mark, recent)
 
     if dry_run:
         print("\n" + "=" * 72)
-        print("SYSTEM")
+        print(f"SYSTEM ({kind})")
         print("=" * 72)
-        print(briefing())
-        print("\n" + "=" * 72)
-        print(f"TOOLS ({len(tools.TOOLS)}, all read-only)")
-        print("=" * 72)
-        for tool in tools.TOOLS:
-            print(f"  {tool['name']:20s} {tool['description'].split('.')[0]}.")
+        print(system)
         print("\n" + "=" * 72)
         print("FIRST MESSAGE")
         print("=" * 72)
-        print(opening)
+        print(first)
         print("\n" + "=" * 72)
-        print(f"would call {config.MODEL}, budget {config.MAX_TURN_TOKENS} tokens")
+        print(f"reach={'act' if reflex else 'shape'}  model={config.REFLEX_MODEL if reflex else config.MODEL}")
         print("=" * 72)
         return None
 
-    import anthropic
+    started = time.time()
 
-    client = anthropic.Anthropic()
-    messages = [{"role": "user", "content": opening}]
-    spent = 0
-    calls = []
-
-    for round_number in range(config.MAX_TOOL_ROUNDS):
-        response = client.messages.create(
-            model=config.MODEL,
-            max_tokens=config.MAX_OUTPUT_TOKENS,
-            system=briefing(),
-            tools=tools.TOOLS,
-            messages=messages,
+    try:
+        outcome = driver.run(
+            system_prompt=system,
+            opening=first,
+            reach="act" if reflex else "shape",
+            model=config.REFLEX_MODEL if reflex else config.MODEL,
+            timeout=config.REFLEX_TIMEOUT if reflex else config.DELIBERATION_TIMEOUT,
         )
-
-        spent += response.usage.input_tokens + response.usage.output_tokens
-        messages.append({"role": "assistant", "content": response.content})
-
-        if response.stop_reason != "tool_use":
-            break
-
-        results = []
-
-        for block in response.content:
-            if block.type != "tool_use":
-                continue
-
-            print(f"  looks at {block.name}({json.dumps(block.input, default=str)[:90]})")
-            outcome = tools.run(block.name, block.input)
-            calls.append({"tool": block.name, "input": block.input})
-            results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": tools.render(outcome),
-            })
-
-        messages.append({"role": "user", "content": results})
-
-        # The budget is what forces it to choose what matters.
-        if spent >= config.MAX_TURN_TOKENS:
-            print(f"  budget spent ({spent} tokens); asking for the entry")
-            messages.append({
-                "role": "user",
-                "content": "You are out of budget for this turn. Write your journal entry now.",
-            })
-            final = client.messages.create(
-                model=config.MODEL,
-                max_tokens=config.MAX_OUTPUT_TOKENS,
-                system=briefing(),
-                messages=messages,
-            )
-            spent += final.usage.input_tokens + final.usage.output_tokens
-            messages.append({"role": "assistant", "content": final.content})
-            break
-
-    entry = "\n".join(
-        block.text for block in messages[-1]["content"]
-        if getattr(block, "type", None) == "text"
-    ).strip()
-
-    if not entry:
-        entry = "(the caretaker wrote nothing this turn)"
-
-    written = journal.write(entry, digest["toSeq"])
-    wake.write_watermark(digest["toSeq"])
+    except driver.NotSignedIn as error:
+        print(f"[{kind}] {error}", file=sys.stderr)
+        raise SystemExit(3)
+    except driver.TurnFailed as error:
+        # A failed turn leaves the watermark alone, so its events come round again.
+        print(f"[{kind}] turn failed: {error}", file=sys.stderr)
+        return None
 
     record = {
+        "kind": kind,
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "fromSeq": mark["seq"],
         "toSeq": digest["toSeq"],
-        "tokens": spent,
-        "toolCalls": calls,
-        "journal": written,
+        "elapsed": round(time.time() - started, 1),
+        "turns": outcome["turns"],
+        "cost": outcome["cost"],
+        "text": outcome["text"],
     }
 
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
-    (config.TURN_DIR / f"{stamp}.json").write_text(json.dumps(record, indent=2))
+    if not reflex:
+        record["journal"] = journal.write(outcome["text"] or "(nothing written)", digest["toSeq"])
 
-    print(f"\n{len(calls)} tool call(s), {spent} tokens, journal at {written['path']}")
-    print(f"watermark advanced to {digest['toSeq']}")
+    wake.write_watermark(digest["toSeq"], reflex=reflex)
+
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
+    (config.TURN_DIR / f"{stamp}-{kind}.json").write_text(json.dumps(record, indent=2))
+
+    print(f"[{kind}] {outcome['turns']} steps, {record['elapsed']}s")
+    print(f"[{kind}] {outcome['text'][:400]}")
+
     return record
 
 
 def main():
     parser = argparse.ArgumentParser(description="A turn of the caretaker.")
-    parser.add_argument("--dry-run", action="store_true", help="assemble the turn and print it; call nothing")
-    parser.add_argument("--force", action="store_true", help="take a turn even if nothing has happened")
-    parser.add_argument("--watch", action="store_true", help="keep checking on the wake interval")
+    parser.add_argument("kind", nargs="?", default="deliberate", choices=["reflex", "deliberate"])
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--force", action="store_true")
+    parser.add_argument("--watch", action="store_true")
     arguments = parser.parse_args()
 
     if not config.CARETAKER_TOKEN:
@@ -185,20 +177,22 @@ def main():
         return 2
 
     if not arguments.watch:
-        run_turn(dry_run=arguments.dry_run, force=arguments.force)
+        take_turn(arguments.kind, dry_run=arguments.dry_run, force=arguments.force)
         return 0
 
-    print(f"watching; floor between turns is {config.MIN_WAKE_INTERVAL}s")
+    print(f"watching: reflex every {config.MIN_REFLEX_INTERVAL}s at the soonest, "
+          f"deliberation every {config.MIN_WAKE_INTERVAL}s at the soonest")
 
     while True:
-        try:
-            run_turn(dry_run=arguments.dry_run)
-        except world_client.WorldError as error:
-            print(f"world unreachable: {error}", file=sys.stderr)
-        except Exception as error:  # a bad turn must not end the loop
-            print(f"turn failed: {error}", file=sys.stderr)
+        for kind in ("reflex", "deliberate"):
+            try:
+                take_turn(kind, dry_run=arguments.dry_run)
+            except world_client.WorldError as error:
+                print(f"world unreachable: {error}", file=sys.stderr)
+            except Exception as error:
+                print(f"[{kind}] turn failed: {error}", file=sys.stderr)
 
-        time.sleep(60)
+        time.sleep(30)
 
 
 if __name__ == "__main__":

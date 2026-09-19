@@ -46,7 +46,9 @@ It must never be able to break the machinery it would need to repair itself.
 - **3 — Agent, read-only** *(done)*. Query interface, digests, journal, wake
   predicate. It observes and writes notes; no write tools. Establishes a
   baseline of what it notices before it can change anything.
-- **4 — Agent, world authority**. Tier 1 and 2 tools, the two loops.
+- **4 — Agent, world authority** *(done)*. Speech and adjustment as immediate
+  acts; the world's data files through the gate; reflex and deliberation loops;
+  turns driven through the `claude` CLI rather than the API.
 - **5 — Engine authority**. Action-provider plugin seam, then the full engine.
 
 ## Health contract

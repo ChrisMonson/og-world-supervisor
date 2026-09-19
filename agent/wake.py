@@ -14,23 +14,30 @@ import config
 import world_client
 
 
-def read_watermark():
-    if not config.WATERMARK_FILE.exists():
+def _file(reflex):
+    return config.REFLEX_WATERMARK_FILE if reflex else config.WATERMARK_FILE
+
+
+def read_watermark(reflex=False):
+    path = _file(reflex)
+
+    if not path.exists():
         return {"seq": 0, "at": 0}
 
     try:
-        return json.loads(config.WATERMARK_FILE.read_text())
+        return json.loads(path.read_text())
     except (json.JSONDecodeError, OSError):
         return {"seq": 0, "at": 0}
 
 
-def write_watermark(seq):
-    config.WATERMARK_FILE.write_text(json.dumps({"seq": seq, "at": time.time()}))
+def write_watermark(seq, reflex=False):
+    _file(reflex).write_text(json.dumps({"seq": seq, "at": time.time()}))
 
 
-def should_wake(force=False):
-    """Returns (wake, reason, watermark)."""
-    mark = read_watermark()
+def should_wake(reflex=False, force=False):
+    """Returns (wake, reason, watermark). The two tempos keep separate marks."""
+    mark = read_watermark(reflex)
+    floor = config.MIN_REFLEX_INTERVAL if reflex else config.MIN_WAKE_INTERVAL
 
     try:
         status = world_client.status()
@@ -48,8 +55,8 @@ def should_wake(force=False):
 
     waited = time.time() - mark["at"]
 
-    if waited < config.MIN_WAKE_INTERVAL:
-        remaining = int(config.MIN_WAKE_INTERVAL - waited)
+    if waited < floor:
+        remaining = int(floor - waited)
         return False, f"{latest - mark['seq']} new events, but {remaining}s of the floor remain", mark
 
     return True, f"{latest - mark['seq']} new events since {mark['seq']}", mark

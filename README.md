@@ -116,17 +116,63 @@ is never passed into a world container.
 
 ## The caretaker
 
-Read-only for now. It can look at the world and write in its journal; it has no
-way to change anything.
-
 ```bash
-bin/caretaker.sh --dry-run   # assemble a turn and print it, calling nothing
-bin/caretaker.sh --force     # take a turn now
-bin/caretaker.sh --watch     # keep checking on the wake interval
+bin/caretaker.sh reflex                 # a brief turn: may speak, may help someone
+bin/caretaker.sh deliberate             # a full turn: may reshape the world
+bin/caretaker.sh <kind> --dry-run       # assemble it and print it, calling nothing
+bin/caretaker.sh --watch                # keep taking turns as the world earns them
 ```
 
-Needs `ANTHROPIC_API_KEY` for a real turn, and a token in
-`state/caretaker-token` that deploys pass through to the world.
+Turns run through the `claude` CLI, on whatever account it is signed in as.
+There is no API key involved. Where there is no keychain to read — the supervisor
+container, most obviously — run `claude setup-token` once and put the result in
+`CLAUDE_CODE_OAUTH_TOKEN`.
+
+### Two tempos
+
+| | reflex | deliberate |
+|---|---|---|
+| wakes | often, on activity | rarely |
+| floor | 60s | 30 min |
+| reach | look, speak, change a person | all of that, plus the world's files |
+| keeps | nothing | a journal entry |
+
+Without the split, whichever it found more pressing would eat the whole budget:
+answering people would starve building, or building would leave people talking
+to nothing.
+
+Its reflex briefing says plainly that silence is the default and that speaking is
+the exception it chooses to make. A world where a voice comes out of the air
+every few minutes is a worse world than one where it almost never does.
+
+### What it can reach
+
+The tools are served as an MCP server over stdio and given to the CLI with
+`--strict-mcp-config`, so they are the only tools in the session. Everything the
+CLI would otherwise bring — shell, files, search, subagents — is denied by name.
+The turn runs in an empty temporary directory with a sanitised environment.
+
+Three reaches, and a turn is started with exactly one:
+
+- **observe** — thirteen read-only tools
+- **act** — those, plus speech and changing one living person
+- **shape** — those, plus the world's data files, commit, deploy and rollback
+
+The reach is enforced by the server, not only by which tools it advertises: a
+call to something outside the current reach is refused. File paths are confined
+to the world's data directory, so this tier cannot touch the engine.
+
+### How a change reaches the world
+
+The caretaker edits a git worktree on the `proposed` branch, checks its work
+against the same validator the world uses, and commits with its reasons. Asking
+to deploy runs the full health contract. A change that fails it lands nowhere
+and the caretaker is told which check said no.
+
+Acts are different: speech and adjustments take effect immediately, touch no
+files, and are recorded in the world's own event log under their own actor — so
+they sit in the same history as everything a player does, and never wake the
+caretaker back up.
 
 ### Waking
 

@@ -16,6 +16,23 @@ class WorldError(RuntimeError):
     pass
 
 
+def _post(path, payload, raw=False):
+    body = payload.encode("utf-8") if raw else json.dumps(payload).encode("utf-8")
+
+    request = urllib.request.Request(f"{config.WORLD_URL}{path}", data=body, method="POST")
+    request.add_header("X-Caretaker-Token", config.CARETAKER_TOKEN)
+    request.add_header("Content-Type", "application/json")
+
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")[:400]
+        raise WorldError(f"{error.code} from {path}: {detail}") from error
+    except urllib.error.URLError as error:
+        raise WorldError(f"cannot reach the world at {config.WORLD_URL}: {error.reason}") from error
+
+
 def _get(path, params=None):
     url = f"{config.WORLD_URL}{path}"
 
@@ -95,3 +112,25 @@ def stuck(threshold=6):
 
 def traffic():
     return _get("/caretaker/signals/traffic")
+
+
+# ---- acts, which take effect at once and change nothing on disk ----------------
+
+def speak(target, text, id=None):
+    return _post("/caretaker/act/speak", {"target": target, "id": id, "text": text})
+
+
+def adjust(characterId, rationale, hitPoints=None, give=None, take=None, moveTo=None):
+    return _post("/caretaker/act/adjust", {
+        "characterId": characterId,
+        "rationale": rationale,
+        "hitPoints": hitPoints,
+        "give": give,
+        "take": take,
+        "moveTo": moveTo,
+    })
+
+
+def validate(world_json):
+    """Checks a proposed world file with the validator the world itself uses."""
+    return _post("/caretaker/validate", world_json, raw=True)
