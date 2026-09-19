@@ -10,10 +10,38 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 GRACE_SECONDS="${GRACE_SECONDS:-300}"
 POLL_SECONDS="${POLL_SECONDS:-10}"
+
+# How long a deployed change must hold before the ratchet advances behind it.
+PROMOTE_AFTER="${PROMOTE_AFTER:-600}"
 ONCE="${1:-}"
 
 unhealthy_since=""
 halt_reported=""
+healthy_since="$(date +%s)"
+
+# last-known-good is a ratchet, and it has to advance on its own: otherwise a
+# deploy that is working fine sits unpromoted, and the next wobble reverts past
+# it to something older and worse.
+maybe_promote() {
+    local live good now
+
+    live="$(world_git rev-parse --verify --quiet "$LIVE_BRANCH" || true)"
+    good="$(world_git rev-parse --verify --quiet "$GOOD_TAG" || true)"
+
+    [ -n "$live" ] && [ "$live" != "$good" ] || return 0
+
+    now="$(date +%s)"
+    [ $((now - healthy_since)) -ge "$PROMOTE_AFTER" ] || return 0
+
+    log "${LIVE_BRANCH} has held for $((now - healthy_since))s; promoting ${live:0:12}"
+
+    if world_git tag -f "$GOOD_TAG" "$live" >/dev/null 2>&1; then
+        printf '%s  promote  %s  (held %ss)\n' \
+            "$(date -u +%FT%TZ)" "${live:0:12}" "$((now - healthy_since))" >> "$LOG_DIR/deploys.log"
+    else
+        log "ERROR  could not advance $GOOD_TAG"
+    fi
+}
 
 # The caretaker stops rather than retrying an authentication that will not come
 # good. Nothing else would say so, so this does.
@@ -56,9 +84,14 @@ check_once() {
         if [ -n "$unhealthy_since" ]; then
             log "recovered after $((now - unhealthy_since))s"
             unhealthy_since=""
+            healthy_since="$now"
         fi
+
+        maybe_promote
         return 0
     fi
+
+    healthy_since="$now"
 
     if [ -z "$unhealthy_since" ]; then
         unhealthy_since="$now"

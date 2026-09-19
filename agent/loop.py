@@ -72,6 +72,14 @@ def opening(kind, digest, mark, recent):
             "```",
         ]
 
+        for notice in deploys.notices():
+            parts += [
+                "",
+                f"Noted by the machinery around the world, at {notice['at']}:",
+                "",
+                notice["text"].strip(),
+            ]
+
         stepped_in = deploys.intervention()
 
         if stepped_in:

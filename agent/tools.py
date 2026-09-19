@@ -139,6 +139,16 @@ TOOLS = [
         },
     },
     {
+        "name": "actions",
+        "description": (
+            "Everything an interaction can be made to do, and how triggers, "
+            "conditions and scope work. Read this before writing an interaction: "
+            "the world is capable of more than the interactions currently in it "
+            "happen to use."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "past_journal",
         "description": "Your own earlier entries, oldest first. What you were thinking when you last looked.",
         "input_schema": {
@@ -161,6 +171,7 @@ HANDLERS = {
     "character_events": lambda **kw: world_client.character_events(**kw),
     "world": lambda **kw: world_client.world(),
     "location": lambda **kw: world_client.location(**kw),
+    "actions": lambda **kw: world_client.actions(),
     "past_journal": lambda **kw: journal.entries(**kw),
 }
 

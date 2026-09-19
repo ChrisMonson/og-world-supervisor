@@ -90,6 +90,10 @@ def world():
     return _get("/caretaker/world")
 
 
+def actions():
+    return _get("/caretaker/world/actions")
+
+
 def location(id):
     return _get(f"/caretaker/world/locations/{int(id)}")
 

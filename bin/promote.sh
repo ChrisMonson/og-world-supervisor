@@ -16,5 +16,15 @@ for _ in $(seq 1 "$SOAK"); do
 done
 
 world_git tag -f "$GOOD_TAG" "$SHA" >/dev/null
+
+# So the repository's default branch is what is actually running, rather than a
+# line of history that quietly diverged. A branch that is checked out somewhere
+# cannot be moved by force, so it is fast-forwarded instead.
+if [ "$(world_git rev-parse --abbrev-ref HEAD)" = "main" ]; then
+    world_git merge --ff-only "$SHA" >/dev/null 2>&1 \
+        || log "note  main could not fast-forward to ${SHA:0:12}"
+else
+    world_git branch -f main "$SHA" >/dev/null 2>&1 || true
+fi
 printf '%s  promote  %s\n' "$(date -u +%FT%TZ)" "$SHORT" >> "$LOG_DIR/deploys.log"
 log "PASS  $SHORT is now $GOOD_TAG"

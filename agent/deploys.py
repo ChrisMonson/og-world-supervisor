@@ -71,3 +71,30 @@ def intervention():
     """Whether anything had to step in since the caretaker last looked."""
     path = config.SUPERVISOR_DIR / "state" / "intervention.json"
     return path.read_text() if path.exists() else ""
+
+
+def notices(mark_seen=True):
+    """
+    Notes left about the machinery: something that stepped in, or something that
+    was wrong in a way the caretaker could not have seen from inside the world.
+    """
+    import json
+
+    path = config.SUPERVISOR_DIR / "state" / "notices.json"
+
+    if not path.exists():
+        return []
+
+    try:
+        entries = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return []
+
+    unseen = [entry for entry in entries if not entry.get("seen")]
+
+    if mark_seen and unseen:
+        for entry in entries:
+            entry["seen"] = True
+        path.write_text(json.dumps(entries, indent=2))
+
+    return unseen
