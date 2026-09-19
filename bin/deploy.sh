@@ -45,6 +45,7 @@ docker run -d --name "$LIVE_CONTAINER" \
     -p "$LIVE_PORT:8080" \
     -v "$DATA_VOLUME:/data" -v "$IDENTITY_VOLUME:/identity" \
     -e "OG_COMMIT=$SHORT" \
+    -e "CARETAKER_TOKEN=$CARETAKER_TOKEN" \
     --memory 1g --pids-limit 512 \
     "$IMAGE" >/dev/null || fail "could not start the new world"
 

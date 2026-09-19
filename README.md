@@ -12,10 +12,11 @@ copied into the world repo.
 ```
 docs/         design notes, the experiment's rationale, open questions
 gate/         the health contract: nothing reaches the world without passing it
-bin/          deploy, promote, rollback, watchdog
+agent/        the caretaker: its briefing, its tools, its loop
+bin/          deploy, promote, rollback, watchdog, caretaker
 compose/      container definitions for both planes
 archive/      preserved history, including og-world before its scrub
-state/        runtime state: snapshots, logs, worktrees (not committed)
+state/        runtime state: snapshots, logs, worktrees, watermark (not committed)
 ```
 
 ## The deploy cycle
@@ -91,3 +92,57 @@ design documentation was removed from it and its history rewritten. Restore with
 ```bash
 git clone archive/og-world-prescrub.bundle og-world-prescrub
 ```
+
+## The caretaker
+
+Read-only for now. It can look at the world and write in its journal; it has no
+way to change anything.
+
+```bash
+bin/caretaker.sh --dry-run   # assemble a turn and print it, calling nothing
+bin/caretaker.sh --force     # take a turn now
+bin/caretaker.sh --watch     # keep checking on the wake interval
+```
+
+Needs `ANTHROPIC_API_KEY` for a real turn, and a token in
+`state/caretaker-token` that deploys pass through to the world.
+
+### Waking
+
+The world's event log carries a monotonic sequence. It wakes when that sequence
+has advanced past what it last saw and the floor between turns has passed:
+
+```sql
+SELECT COALESCE(MAX(seq), 0) FROM events WHERE actor <> 'god';
+```
+
+Excluding its own acts is what stops it waking itself forever once it can act.
+The watermark advances only after a turn completes, so a failed turn replays its
+events rather than losing them.
+
+### What it sees
+
+A digest of everything since it last looked — who was born, who died and to
+what, what was said, what went unanswered, who is stuck, where people go, which
+places nobody has walked into — and thirteen read-only tools to look further.
+
+The digest is a starting view, never a filter. Every list reports the total it
+was drawn from, and the raw event feed stays available unfiltered, so a summary
+is never a wall.
+
+It reads the world over HTTP through a token-gated route. That route reads the
+world database, which has no account data in it, so there is nothing there to
+connect one character to another.
+
+### Its journal
+
+Entries are written into the world repository and committed as `The Caretaker`,
+so `git log --author` separates them from ours. The journal is the only thing
+that carries between turns: context resets every time it wakes.
+
+### Its briefing
+
+`agent/briefing.md` tells it that it tends a world, how the world works, that
+characters die once and for good, and that it can currently only observe. It
+does not tell it that it is being watched, what is being measured, or anything
+about the machinery around it.

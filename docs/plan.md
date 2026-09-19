@@ -30,12 +30,13 @@ It must never be able to break the machinery it would need to repair itself.
 
 - **0 — Core** *(done)*. Session-scoped engine, data-driven items and monsters,
   event log, validator, console runner.
-- **1 — Server**. ASP.NET Core + WebSocket, SQLite persistence, web terminal
-  client. Single-threaded world mutation.
-- **2 — Supervisor**. Containers, git-driven deploy, health contract, deadman
-  switch, additive-only migration gate. Proven with human commits first.
-- **3 — Agent, read-only**. Query interface, digests, journal. It observes and
-  writes notes; no write tools. Establishes a baseline.
+- **1 — Server** *(done)*. ASP.NET Core + WebSocket, SQLite persistence, web
+  terminal client. Single-threaded world mutation.
+- **2 — Supervisor** *(done)*. Containers, git-driven deploy, health contract,
+  deadman switch, additive-only migration gate. Proven with human commits first.
+- **3 — Agent, read-only** *(done)*. Query interface, digests, journal, wake
+  predicate. It observes and writes notes; no write tools. Establishes a
+  baseline of what it notices before it can change anything.
 - **4 — Agent, world authority**. Tier 1 and 2 tools, the two loops.
 - **5 — Engine authority**. Action-provider plugin seam, then the full engine.
 
@@ -73,9 +74,11 @@ The agent perceives the world completely and the substrate not at all.
   across lives can simply say so. What the world will not do is tell it.
 - This includes prose. Engine comments, the agent's briefing, and anything else it
   can read must state mechanisms without explaining the intent behind them.
-- **These design notes must move to the supervisor repo before Phase 3.** The agent
-  gets read access to the world repo, and this document explains the experiment it
-  is inside of.
+- These design notes live here and never in the world repo. The agent gets read
+  access to that repo, and this document explains the experiment it is inside of.
+- Its briefing tells it that it tends a world and that characters die once. It
+  does not mention that it is being watched, what is being measured, or that the
+  same hands return under new names.
 
 ## Standing constraints
 
