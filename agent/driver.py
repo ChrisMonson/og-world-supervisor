@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 import config
@@ -115,8 +116,48 @@ def check_credentials(timeout=120):
     return True
 
 
-def run(system_prompt, opening, reach, model=None, timeout=1800):
-    """Takes one turn. Returns the final text and what it cost."""
+def _render(events):
+    """A readable account of the turn: what it looked at, and what it said."""
+    lines = []
+
+    for event in events:
+        kind = event.get("type")
+
+        if kind == "assistant":
+            for block in (event.get("message", {}).get("content") or []):
+                if block.get("type") == "text" and block.get("text", "").strip():
+                    lines += ["### it said", "", block["text"].strip(), ""]
+                elif block.get("type") == "thinking" and block.get("thinking", "").strip():
+                    lines += ["### it thought", "", block["thinking"].strip(), ""]
+                elif block.get("type") == "tool_use":
+                    name = block.get("name", "").replace("mcp__caretaker__", "")
+                    arguments = json.dumps(block.get("input") or {}, default=str)
+                    lines += [f"### it looked at `{name}`", "", f"```json\n{arguments[:2000]}\n```", ""]
+
+        elif kind == "user":
+            for block in (event.get("message", {}).get("content") or []):
+                if block.get("type") == "tool_result":
+                    body = block.get("content")
+                    if isinstance(body, list):
+                        body = "".join(part.get("text", "") for part in body if isinstance(part, dict))
+                    body = str(body or "")
+                    lines += ["### and saw", "", f"```\n{body[:3000]}\n```", ""]
+
+        elif kind == "rate_limit_event":
+            lines += [f"> rate limit: {json.dumps(event)[:300]}", ""]
+
+    return "\n".join(lines)
+
+
+def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path=None):
+    """
+    Takes one turn.
+
+    The whole exchange is streamed to disk as it happens: every tool call with its
+    arguments, every result it saw, and everything it said between them. The
+    model's own reasoning text is not exposed by the CLI, so what is kept is the
+    record of what it chose to look at and what it concluded from it.
+    """
     config.REACH = reach
 
     with tempfile.TemporaryDirectory() as scratch:
@@ -126,7 +167,9 @@ def run(system_prompt, opening, reach, model=None, timeout=1800):
         command = [
             "claude",
             "-p", opening,
-            "--output-format", "json",
+            "--output-format", "stream-json",
+            "--include-partial-messages",
+            "--verbose",
             "--system-prompt", system_prompt,
             "--mcp-config", str(config_path),
             "--strict-mcp-config",
@@ -136,23 +179,60 @@ def run(system_prompt, opening, reach, model=None, timeout=1800):
             "--model", model or config.MODEL,
         ]
 
+        events = []
+        payload = None
+        raw = None
+
+        if transcript_path:
+            Path(transcript_path).parent.mkdir(parents=True, exist_ok=True)
+            raw = open(transcript_path, "w")
+
         try:
-            result = subprocess.run(
-                command, capture_output=True, text=True, timeout=timeout,
+            process = subprocess.Popen(
+                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                 cwd=scratch,  # nothing of ours is reachable as a file
                 env=child_environment(),
                 stdin=subprocess.DEVNULL,  # the prompt is an argument, not piped
             )
+
+            deadline = time.time() + timeout
+
+            for line in process.stdout:
+                if raw:
+                    raw.write(line)
+                    raw.flush()  # so a turn in progress can be watched
+
+                line = line.strip()
+
+                if not line:
+                    continue
+
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                # The deltas are only useful for reassembling; keep the whole
+                # messages, which carry the tool calls and the text.
+                if event.get("type") != "stream_event":
+                    events.append(event)
+
+                if event.get("type") == "result":
+                    payload = event
+
+                if time.time() > deadline:
+                    process.kill()
+                    raise TurnFailed(f"the turn ran past {timeout}s")
+
+            stderr = process.stderr.read()
+            process.wait(timeout=30)
         except subprocess.TimeoutExpired as error:
             raise TurnFailed(f"the turn ran past {timeout}s") from error
+        finally:
+            if raw:
+                raw.close()
 
-    # The CLI reports failures as JSON on stdout even when it exits non-zero.
-    payload = None
-
-    try:
-        payload = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        pass
+        result = subprocess.CompletedProcess(command, process.returncode, "", stderr)
 
     if payload is None:
         raise TurnFailed((result.stderr or result.stdout).strip()[-1500:] or
@@ -169,8 +249,13 @@ def run(system_prompt, opening, reach, model=None, timeout=1800):
 
     usage = payload.get("usage") or {}
 
+    if transcript_path:
+        readable = Path(transcript_path).with_suffix(".md")
+        readable.write_text(_render(events))
+
     return {
         "text": (payload.get("result") or "").strip(),
+        "steps": len([event for event in events if event.get("type") == "assistant"]),
         "turns": payload.get("num_turns"),
         "cost": payload.get("total_cost_usd"),
         "duration_ms": payload.get("duration_ms"),

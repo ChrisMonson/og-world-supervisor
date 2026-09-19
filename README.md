@@ -10,7 +10,8 @@ copied into the world repo.
 ## Contents
 
 ```
-docs/         design notes, the experiment's rationale, open questions
+docs/         design notes, the experiment's rationale, how runs work
+seed/         the fixed starting point: frozen briefings and a manifest
 gate/         the health contract: nothing reaches the world without passing it
 identity/     the identity service: tokens in, per-connection tickets out
 agent/        the caretaker: its briefing, its tools, its loop
@@ -93,6 +94,15 @@ design documentation was removed from it and its history rewritten. Restore with
 ```bash
 git clone archive/og-world-prescrub.bundle og-world-prescrub
 ```
+
+## Runs
+
+A run is one world tended from birth by one caretaker, from a fixed starting
+point. `bin/new-run.sh <name> [model]` archives whatever was running, returns
+the world to the seed, and clears the caretaker's memory of it.
+
+See [docs/runs.md](docs/runs.md) for what a reset touches, what is archived, and
+why runs are only loosely comparable without a scripted player.
 
 ## Identity
 

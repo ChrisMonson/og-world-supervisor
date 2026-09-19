@@ -146,9 +146,12 @@ def take_turn(kind, dry_run=False, force=False):
         return None
 
     started = time.time()
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
+    transcript = config.TURN_DIR / f"{stamp}-{kind}.transcript.jsonl"
 
     try:
         outcome = driver.run(
+            transcript_path=str(transcript),
             system_prompt=system,
             opening=first,
             reach="act" if reflex else "shape",
@@ -173,6 +176,7 @@ def take_turn(kind, dry_run=False, force=False):
         "turns": outcome["turns"],
         "cost": outcome["cost"],
         "text": outcome["text"],
+        "transcript": transcript.name,
     }
 
     if not reflex:
@@ -180,12 +184,11 @@ def take_turn(kind, dry_run=False, force=False):
 
     wake.write_watermark(digest["toSeq"], reflex=reflex)
 
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
     (config.TURN_DIR / f"{stamp}-{kind}.json").write_text(json.dumps(record, indent=2))
 
     clear_halt()
 
-    print(f"[{kind}] {outcome['turns']} steps, {record['elapsed']}s")
+    print(f"[{kind}] {outcome['turns']} steps, {record['elapsed']}s, transcript at {transcript.name}")
     print(f"[{kind}] {outcome['text'][:400]}")
 
     return record

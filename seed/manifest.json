@@ -1,0 +1,11 @@
+{
+  "version": "v1",
+  "worldTag": "seed/v1",
+  "worldSha": "9dfc82c61b67c0fc9580bb60fd76ab6a5fc7c41d",
+  "briefings": {
+    "deliberate": "c918c13877216b28",
+    "reflex": "7b8a94300d92c0bd"
+  },
+  "defaultModel": "opus",
+  "note": "The starting point every run begins from. The world at this commit, and these briefings. Changing either means a new seed version, because runs from different seeds are not comparable."
+}
