@@ -1,36 +1,28 @@
 # Open issues
 
-## Identity is reachable from the world container — blocking Phase 5
+## Resolved
 
-**What.** `IdentityStore` runs inside the world server, and `/identity` is mounted
-into the world's container. It holds `accounts` (token → the character currently
-being played) and `character_history` (every character a token has had).
+### Identity was reachable from the world container
 
-**Why it matters.** The two-container plan puts the caretaker in the same
-container as the world. Today that is harmless: the caretaker has thirteen HTTP
-tools and no way to read a file. At Phase 5 it gains the ability to run code in
-that container, and at that point it can open `identity.db` and read lineage
-directly. Even without `character_history`, a process that can watch `accounts`
-over time sees one token move from one character to the next.
+*Closed. The world no longer holds any of it.*
 
-That would not just weaken the veil, it would hand over exactly the fact the
-world is built not to say.
+`IdentityStore` ran inside the world server and `/identity` was mounted into the
+world's container, holding token to character and a full lineage table. Harmless
+while the caretaker had only HTTP read tools; a direct handover of lineage once
+it could run code there.
 
-**Not currently exploitable.** Phase 3's caretaker has no file access, no shell,
-and no write tools at all. This is a gap in the design, not a live one.
+Identity is now its own service, in its own container, on its own volume, built
+from the supervisor repo so the caretaker cannot edit it either.
 
-**Fix before Phase 5.** Identity moves out of the world process into its own
-service, with its own volume, in its own container:
+A browser exchanges its token for a **ticket** directly with that service. Only
+the ticket reaches the world. Redeeming it says which character belongs on this
+connection and nothing more, it is single use, and it is different for every
+connection — so nothing the world sees joins one life to the next.
 
-- the world calls it for resolve / bind / clear, holding a secret that permits
-  only those three
-- lineage reads require a second secret, held only by the supervisor
-- the world container never mounts the identity volume
+Two keys: the world holds one that permits redeem, bind and release only.
+Lineage needs a second, which lives in `state/identity-admin-key` and is never
+passed into any world container. Verified: the world's key returns 401 on
+`/lineage`, in either header.
 
-Ripples into the gate (a candidate would need both containers up) and into
-`deploy.sh` and `rollback.sh`. Roughly a day's work, and cheapest done as the
-first piece of Phase 4, before anything has write authority.
-
-**Interim.** Until then, do not give the caretaker file access, a shell, or
-arbitrary code execution in the world container. That is the line Phase 5
-crosses, which is why this is listed as blocking it.
+This holds even at Phase 5, when the caretaker can run code in the world
+process, because there is nothing there to find. Tokens never arrive.

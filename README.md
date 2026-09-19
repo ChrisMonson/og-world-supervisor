@@ -12,6 +12,7 @@ copied into the world repo.
 ```
 docs/         design notes, the experiment's rationale, open questions
 gate/         the health contract: nothing reaches the world without passing it
+identity/     the identity service: tokens in, per-connection tickets out
 agent/        the caretaker: its briefing, its tools, its loop
 bin/          deploy, promote, rollback, watchdog, caretaker
 compose/      container definitions for both planes
@@ -92,6 +93,26 @@ design documentation was removed from it and its history rewritten. Restore with
 ```bash
 git clone archive/og-world-prescrub.bundle og-world-prescrub
 ```
+
+## Identity
+
+A visitor's browser holds a token. It exchanges that token for a **ticket**
+directly with the identity service, and presents only the ticket to the world.
+Redeeming a ticket tells the world which character belongs on this connection —
+single use, different every connection, meaningless afterwards.
+
+The world therefore holds nothing that joins one character to the next, which
+stays true even once the caretaker can run code inside it.
+
+```
+browser  --token-->  identity          (POST /tickets)
+browser  --ticket->  world             (websocket hello)
+world    --ticket->  identity          (redeem / bind / release, world key)
+supervisor --------> identity          (lineage, admin key)
+```
+
+`bin/init-keys.sh` mints all three secrets. The admin key stays in `state/` and
+is never passed into a world container.
 
 ## The caretaker
 

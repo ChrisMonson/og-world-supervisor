@@ -10,20 +10,36 @@ not editable by whatever is proposing the deploy.
 import asyncio
 import json
 import sys
+import urllib.request
 
 import websockets
 
 
+def claim_ticket(identity_url, token=None):
+    """Exchanges a token for a ticket, exactly as the browser does."""
+    request = urllib.request.Request(
+        f"{identity_url}/tickets",
+        data=json.dumps({"token": token}).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST")
+
+    with urllib.request.urlopen(request, timeout=10) as response:
+        return json.loads(response.read().decode())
+
+
 class Player:
-    def __init__(self, url):
-        self.url = url
+    def __init__(self, world_url, identity_url):
+        self.ws_url = world_url.replace("http://", "ws://").replace("https://", "wss://") + "/ws"
+        self.identity_url = identity_url
         self.socket = None
         self.token = None
         self.lines = []
 
     async def arrive(self, token=None):
-        self.socket = await websockets.connect(self.url)
-        await self.socket.send(json.dumps({"type": "hello", "value": token}))
+        issued = claim_ticket(self.identity_url, token)
+        self.token = issued["token"]
+        self.socket = await websockets.connect(self.ws_url)
+        await self.socket.send(json.dumps({"type": "hello", "value": issued["ticket"]}))
         await self.drain(1.0)
         return self
 
@@ -39,10 +55,7 @@ class Player:
             except (asyncio.TimeoutError, websockets.ConnectionClosed):
                 break
             message = json.loads(raw)
-            if message["type"] == "token":
-                self.token = message["token"]
-            else:
-                self.lines.append((message["type"], message.get("text") or ""))
+            self.lines.append((message["type"], message.get("text") or ""))
 
     async def name(self, value):
         await self.socket.send(json.dumps({"type": "name", "value": value}))
@@ -63,19 +76,19 @@ class Player:
             await self.socket.close()
 
 
-async def run(url):
+async def run(world_url, identity_url):
     checks = []
 
     def check(label, ok):
         checks.append((label, bool(ok)))
         print(f"  {'PASS' if ok else 'FAIL'}  {label}")
 
-    alice = await Player(url).arrive()
+    alice = await Player(world_url, identity_url).arrive()
     await alice.name("GateAlice")
     check("a character can be born into the world", len(alice.text()) > 0)
     check("a token is issued", bool(alice.token))
 
-    bob = await Player(url).arrive()
+    bob = await Player(world_url, identity_url).arrive()
     mark = alice.mark()
     await bob.name("GateBob")
     await alice.drain(0.6)
@@ -109,7 +122,7 @@ async def run(url):
     await alice.leave()
     await asyncio.sleep(0.5)
 
-    again = await Player(url).arrive(token)
+    again = await Player(world_url, identity_url).arrive(token)
     await again.do("inventory")
     check("a reconnect resumes the same character", "spoon" in again.text().lower())
 
@@ -126,9 +139,10 @@ async def run(url):
 
 
 def main():
-    url = sys.argv[1] if len(sys.argv) > 1 else "ws://localhost:5099/ws"
+    world_url = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:5099"
+    identity_url = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:5098"
     try:
-        return 0 if asyncio.run(run(url)) else 1
+        return 0 if asyncio.run(run(world_url, identity_url)) else 1
     except Exception as error:
         print(f"  FAIL  smoke test could not complete: {error}")
         return 1

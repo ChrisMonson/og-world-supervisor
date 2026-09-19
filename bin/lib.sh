@@ -12,10 +12,23 @@ WORKTREE_DIR="${WORKTREE_DIR:-$STATE_DIR/worktrees}"
 LIVE_CONTAINER="${LIVE_CONTAINER:-og-world}"
 LIVE_PORT="${LIVE_PORT:-5080}"
 DATA_VOLUME="${DATA_VOLUME:-og-data}"
-IDENTITY_VOLUME="${IDENTITY_VOLUME:-og-identity}"
+
+# Identity runs apart from the world, on its own volume, in its own container.
+# The world never mounts it and never holds a token.
+IDENTITY_CONTAINER="${IDENTITY_CONTAINER:-og-identity}"
+IDENTITY_IMAGE="${IDENTITY_IMAGE:-og-identity:current}"
+IDENTITY_VOLUME="${IDENTITY_VOLUME:-og-identity-data}"
+IDENTITY_PORT="${IDENTITY_PORT:-5090}"
+OG_NETWORK="${OG_NETWORK:-og-net}"
+
+# The world gets the key for redeem/bind/release. Lineage needs the other one,
+# which lives here and is never passed into any world container.
+IDENTITY_WORLD_KEY="${IDENTITY_WORLD_KEY:-$(cat "$SUPERVISOR_DIR/state/identity-world-key" 2>/dev/null || true)}"
+IDENTITY_ADMIN_KEY="${IDENTITY_ADMIN_KEY:-$(cat "$SUPERVISOR_DIR/state/identity-admin-key" 2>/dev/null || true)}"
 
 CANDIDATE_CONTAINER="og-world-candidate"
 CANDIDATE_PORT="${CANDIDATE_PORT:-5099}"
+GATE_IDENTITY_PORT="${GATE_IDENTITY_PORT:-5098}"
 
 LIVE_BRANCH="${LIVE_BRANCH:-live}"
 PROPOSED_BRANCH="${PROPOSED_BRANCH:-proposed}"
@@ -57,3 +70,45 @@ container_crashed() {
 }
 
 remove_container() { docker rm -f "$1" >/dev/null 2>&1 || true; }
+
+ensure_network() {
+    docker network inspect "$OG_NETWORK" >/dev/null 2>&1 || docker network create "$OG_NETWORK" >/dev/null
+}
+
+# Identity outlives any single world. It is not part of a world deploy, and a
+# rollback of the world does not touch it.
+ensure_identity() {
+    ensure_network
+
+    if [ -z "$IDENTITY_WORLD_KEY" ] || [ -z "$IDENTITY_ADMIN_KEY" ]; then
+        fail "identity keys missing; run bin/init-keys.sh"
+    fi
+
+    if docker ps --format '{{.Names}}' | grep -qx "$IDENTITY_CONTAINER"; then
+        return 0
+    fi
+
+    docker image inspect "$IDENTITY_IMAGE" >/dev/null 2>&1 \
+        || docker build -q -t "$IDENTITY_IMAGE" "$SUPERVISOR_DIR/identity" >/dev/null \
+        || fail "could not build identity"
+
+    remove_container "$IDENTITY_CONTAINER"
+    docker run -d --name "$IDENTITY_CONTAINER" \
+        --restart unless-stopped \
+        --network "$OG_NETWORK" \
+        -p "$IDENTITY_PORT:8090" \
+        -v "$IDENTITY_VOLUME:/identity" \
+        -e "IDENTITY_WORLD_KEY=$IDENTITY_WORLD_KEY" \
+        -e "IDENTITY_ADMIN_KEY=$IDENTITY_ADMIN_KEY" \
+        --memory 256m --pids-limit 128 \
+        "$IDENTITY_IMAGE" >/dev/null || fail "could not start identity"
+
+    local waited=0
+    while [ "$waited" -lt 30 ]; do
+        curl -fsS "http://localhost:$IDENTITY_PORT/health" >/dev/null 2>&1 && return 0
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    fail "identity never became healthy"
+}

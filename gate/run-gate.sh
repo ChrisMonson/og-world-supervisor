@@ -8,8 +8,13 @@ WORKTREE="${1:?worktree path required}"
 IMAGE="${2:?image tag required}"
 GATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+GATE_IDENTITY="og-identity-gate"
+GATE_NETWORK="og-gate-net"
+
 cleanup() {
     remove_container "$CANDIDATE_CONTAINER"
+    remove_container "$GATE_IDENTITY"
+    docker network rm "$GATE_NETWORK" >/dev/null 2>&1 || true
     docker volume rm "og-gate-data" "og-gate-identity" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -37,11 +42,32 @@ docker run --rm \
 step "4/6  a candidate world boots on empty data"
 docker volume rm og-gate-data og-gate-identity >/dev/null 2>&1 || true
 remove_container "$CANDIDATE_CONTAINER"
+remove_container "$GATE_IDENTITY"
+docker network rm "$GATE_NETWORK" >/dev/null 2>&1 || true
+docker network create "$GATE_NETWORK" >/dev/null
+
+# The candidate gets its own throwaway identity, so the gate never touches the
+# real one and a candidate can never see a live visitor.
+docker image inspect "$IDENTITY_IMAGE" >/dev/null 2>&1 \
+    || docker build -q -t "$IDENTITY_IMAGE" "$SUPERVISOR_DIR/identity" >/dev/null \
+    || fail "could not build identity"
+
+docker run -d --name "$GATE_IDENTITY" \
+    --network "$GATE_NETWORK" \
+    -p "$GATE_IDENTITY_PORT:8090" \
+    -v og-gate-identity:/identity \
+    -e "IDENTITY_WORLD_KEY=gate-world-key" \
+    -e "IDENTITY_ADMIN_KEY=gate-admin-key" \
+    "$IDENTITY_IMAGE" >/dev/null || fail "gate identity would not start"
 
 docker run -d --name "$CANDIDATE_CONTAINER" \
+    --network "$GATE_NETWORK" \
     -p "$CANDIDATE_PORT:8080" \
-    -v og-gate-data:/data -v og-gate-identity:/identity \
+    -v og-gate-data:/data \
     -e OG_COMMIT=candidate \
+    -e "Identity__Url=http://$GATE_IDENTITY:8090" \
+    -e "Identity__PublicUrl=http://localhost:$GATE_IDENTITY_PORT" \
+    -e "Identity__Key=gate-world-key" \
     "$IMAGE" >/dev/null || fail "candidate would not start"
 
 wait_healthy "$CANDIDATE_PORT" || {
@@ -51,7 +77,7 @@ wait_healthy "$CANDIDATE_PORT" || {
 
 # 5. It is actually playable ---------------------------------------------------
 step "5/6  the world is playable"
-python3 "$GATE_DIR/smoke.py" "ws://localhost:$CANDIDATE_PORT/ws" || fail "smoke test"
+python3 "$GATE_DIR/smoke.py" "http://localhost:$CANDIDATE_PORT" "http://localhost:$GATE_IDENTITY_PORT" || fail "smoke test"
 
 # 6. It stays up ----------------------------------------------------------------
 step "6/6  ${SOAK_SECONDS}s soak with no unhandled exception"

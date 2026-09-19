@@ -12,6 +12,8 @@ WORKTREE="$WORKTREE_DIR/$SHORT"
 
 log "deploying $REF -> $SHORT"
 
+ensure_identity
+
 # An isolated checkout: the gate never runs against a dirty working tree.
 world_git worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
 world_git worktree add --detach --quiet "$WORKTREE" "$SHA" || fail "could not create worktree"
@@ -43,7 +45,11 @@ remove_container "$LIVE_CONTAINER"
 docker run -d --name "$LIVE_CONTAINER" \
     --restart unless-stopped \
     -p "$LIVE_PORT:8080" \
-    -v "$DATA_VOLUME:/data" -v "$IDENTITY_VOLUME:/identity" \
+    --network "$OG_NETWORK" \
+    -v "$DATA_VOLUME:/data" \
+    -e "Identity__Url=http://$IDENTITY_CONTAINER:8090" \
+    -e "Identity__PublicUrl=http://localhost:$IDENTITY_PORT" \
+    -e "Identity__Key=$IDENTITY_WORLD_KEY" \
     -e "OG_COMMIT=$SHORT" \
     -e "CARETAKER_TOKEN=$CARETAKER_TOKEN" \
     --memory 1g --pids-limit 512 \

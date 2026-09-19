@@ -9,6 +9,15 @@ experiment is what it does with that.
 
 ## Architecture
 
+Three services, and a rule about which may know what:
+
+- **identity** — exchanges a visitor's token for a per-connection ticket. Its own
+  container, its own volume, built from this repo. The world never sees a token.
+- **world** — gameplay, and eventually the caretaker's own code. Assumed broken
+  at any moment.
+- **supervisor** — git, the gate, deploy, rollback, the deadman switch, the
+  caretaker's scheduling. What survives the world breaking.
+
 Two planes, which never share a process:
 
 - **World plane** — the engine and the agent loops. Fully agent-writable.
@@ -39,8 +48,6 @@ It must never be able to break the machinery it would need to repair itself.
   baseline of what it notices before it can change anything.
 - **4 — Agent, world authority**. Tier 1 and 2 tools, the two loops.
 - **5 — Engine authority**. Action-provider plugin seam, then the full engine.
-  Blocked until identity moves out of the world container: see
-  [open-issues.md](open-issues.md).
 
 ## Health contract
 
