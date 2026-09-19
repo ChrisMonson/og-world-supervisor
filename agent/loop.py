@@ -27,6 +27,22 @@ import world_client
 AGENT_DIR = config.SUPERVISOR_DIR / "agent"
 
 
+def halt(reason):
+    """
+    Leaves a note saying why the caretaker stopped, where something other than a
+    log tail will find it.
+    """
+    config.HALT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    config.HALT_FILE.write_text(json.dumps({
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "reason": reason,
+    }, indent=2))
+
+
+def clear_halt():
+    config.HALT_FILE.unlink(missing_ok=True)
+
+
 def briefing(kind):
     name = "briefing.md" if kind == "deliberate" else "briefing-reflex.md"
     return (AGENT_DIR / name).read_text()
@@ -132,6 +148,7 @@ def take_turn(kind, dry_run=False, force=False):
             timeout=config.REFLEX_TIMEOUT if reflex else config.DELIBERATION_TIMEOUT,
         )
     except driver.NotSignedIn as error:
+        halt(str(error))
         print(f"[{kind}] {error}", file=sys.stderr)
         raise SystemExit(3)
     except driver.TurnFailed as error:
@@ -158,6 +175,8 @@ def take_turn(kind, dry_run=False, force=False):
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
     (config.TURN_DIR / f"{stamp}-{kind}.json").write_text(json.dumps(record, indent=2))
 
+    clear_halt()
+
     print(f"[{kind}] {outcome['turns']} steps, {record['elapsed']}s")
     print(f"[{kind}] {outcome['text'][:400]}")
 
@@ -170,7 +189,21 @@ def main():
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--watch", action="store_true")
+    parser.add_argument("--check", action="store_true",
+                        help="check the CLI's credentials and exit")
     arguments = parser.parse_args()
+
+    if arguments.check:
+        try:
+            driver.check_credentials()
+            clear_halt()
+            print("credentials are good")
+            return 0
+        except driver.TurnFailed as error:
+            if isinstance(error, driver.NotSignedIn):
+                halt(str(error))
+            print(error, file=sys.stderr)
+            return 3
 
     if not config.CARETAKER_TOKEN:
         print("CARETAKER_TOKEN is not set; the world will not answer.", file=sys.stderr)
@@ -179,6 +212,20 @@ def main():
     if not arguments.watch:
         take_turn(arguments.kind, dry_run=arguments.dry_run, force=arguments.force)
         return 0
+
+    # Find out about credentials now, not on the first wake in the small hours.
+    if not arguments.dry_run:
+        try:
+            driver.check_credentials()
+            clear_halt()
+            print("credentials are good")
+        except driver.NotSignedIn as error:
+            halt(str(error))
+            print(error, file=sys.stderr)
+            return 3
+        except driver.TurnFailed as error:
+            print(f"could not check credentials: {error}", file=sys.stderr)
+            return 3
 
     print(f"watching: reflex every {config.MIN_REFLEX_INTERVAL}s at the soonest, "
           f"deliberation every {config.MIN_WAKE_INTERVAL}s at the soonest")

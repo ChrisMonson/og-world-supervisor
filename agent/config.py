@@ -9,6 +9,7 @@ WORLD_REPO = Path(os.environ.get("WORLD_REPO", SUPERVISOR_DIR.parent / "og-world
 STATE_DIR = Path(os.environ.get("STATE_DIR", SUPERVISOR_DIR / "state")) / "agent"
 TURN_DIR = STATE_DIR / "turns"
 WATERMARK_FILE = STATE_DIR / "watermark"
+HALT_FILE = Path(os.environ.get("STATE_DIR", SUPERVISOR_DIR / "state")) / "caretaker-halted.json"
 REFLEX_WATERMARK_FILE = STATE_DIR / "reflex-watermark"
 
 WORLD_URL = os.environ.get("WORLD_URL", "http://localhost:5080")

@@ -38,6 +38,10 @@ GOOD_TAG="${GOOD_TAG:-last-known-good}"
 # /caretaker route stays closed.
 CARETAKER_TOKEN="${CARETAKER_TOKEN:-$(cat "$SUPERVISOR_DIR/state/caretaker-token" 2>/dev/null || true)}"
 
+# Issued by `claude setup-token` on a machine with a browser. Needed wherever
+# there is no keychain to read, which includes the supervisor container.
+CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN:-$(cat "$SUPERVISOR_DIR/state/claude-token" 2>/dev/null || true)}"
+
 SOAK_SECONDS="${SOAK_SECONDS:-20}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-60}"
 

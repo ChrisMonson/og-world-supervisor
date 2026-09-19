@@ -17,3 +17,11 @@ mint() {
 mint caretaker-token
 mint identity-world-key
 mint identity-admin-key
+
+# The one secret that cannot be minted here: it needs a browser.
+if [ -s "$STATE_DIR/claude-token" ]; then
+    log "claude-token already exists"
+else
+    log "claude-token is missing. Run 'claude setup-token' on a machine with a"
+    log "browser and write the result to state/claude-token."
+fi

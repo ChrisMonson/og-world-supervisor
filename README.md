@@ -123,10 +123,37 @@ bin/caretaker.sh <kind> --dry-run       # assemble it and print it, calling noth
 bin/caretaker.sh --watch                # keep taking turns as the world earns them
 ```
 
-Turns run through the `claude` CLI, on whatever account it is signed in as.
-There is no API key involved. Where there is no keychain to read — the supervisor
-container, most obviously — run `claude setup-token` once and put the result in
-`CLAUDE_CODE_OAUTH_TOKEN`.
+### Credentials
+
+Turns run through the `claude` CLI, on whatever account it is signed in as. No
+API key is involved.
+
+Where there is no keychain to read — the supervisor container, most obviously —
+issue a long-lived token on a machine that has a browser and write it to
+`state/claude-token`:
+
+```bash
+claude setup-token > state/claude-token && chmod 600 state/claude-token
+```
+
+`lib.sh` reads that file, so it is set in one place and threaded through to both
+`caretaker.sh` and the supervisor container. `state/` is not committed, and the
+token is never baked into an image.
+
+The token does expire, and when it does the caretaker **stops rather than
+retrying**, because an authentication failure will not come good on its own:
+
+```bash
+bin/caretaker.sh --check     # exits 3 if the credentials are no good
+```
+
+`--watch` runs that check before its first turn, so a bad token is found when
+you start the loop rather than on a wake at three in the morning. On failure the
+caretaker writes `state/caretaker-halted.json` with the reason, and the watchdog
+reports it — once per halt, not once per poll — so a stopped caretaker is not
+something you discover by tailing a log days later.
+
+The world keeps running while it is stopped. Only its tending pauses.
 
 ### Two tempos
 

@@ -49,6 +49,9 @@ services:
       WORLD_REPO: /world-repo
       LIVE_PORT: 8080
       GRACE_SECONDS: ${GRACE_SECONDS:-300}
+      # No keychain in here. Issue one with `claude setup-token` on a machine
+      # with a browser and write it to state/claude-token; never bake it in.
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
     depends_on:
       - world
     command: ["/supervisor/bin/watchdog.sh"]

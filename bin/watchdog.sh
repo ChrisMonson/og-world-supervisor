@@ -13,6 +13,34 @@ POLL_SECONDS="${POLL_SECONDS:-10}"
 ONCE="${1:-}"
 
 unhealthy_since=""
+halt_reported=""
+
+# The caretaker stops rather than retrying an authentication that will not come
+# good. Nothing else would say so, so this does.
+check_caretaker() {
+    local halt="$STATE_DIR/caretaker-halted.json"
+
+    if [ ! -f "$halt" ]; then
+        if [ -n "$halt_reported" ]; then
+            log "the caretaker is running again"
+            halt_reported=""
+        fi
+        return 0
+    fi
+
+    local stamp
+    stamp="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['at'])" "$halt" 2>/dev/null || echo unknown)"
+
+    if [ "$halt_reported" = "$stamp" ]; then
+        return 1
+    fi
+
+    halt_reported="$stamp"
+    log "THE CARETAKER HAS STOPPED (since $stamp). The world runs on without it."
+    python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['reason'])" "$halt" 2>/dev/null | sed 's/^/      /' >&2 || true
+    printf '%s  caretaker-halted  %s\n' "$(date -u +%FT%TZ)" "$stamp" >> "$LOG_DIR/watchdog.log"
+    return 1
+}
 
 check_once() {
     local now healthy=0
@@ -69,12 +97,14 @@ JSON
 }
 
 if [ "$ONCE" = "--once" ]; then
+    check_caretaker || true
     check_once
     exit 0
 fi
 
 log "watchdog running: poll ${POLL_SECONDS}s, grace ${GRACE_SECONDS}s"
 while true; do
+    check_caretaker || true
     check_once || true
     sleep "$POLL_SECONDS"
 done

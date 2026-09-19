@@ -32,6 +32,19 @@ class NotSignedIn(TurnFailed):
     pass
 
 
+CREDENTIAL_HELP = (
+    "The CLI could not reach usable credentials. Either:\n"
+    "  * run this from a terminal where `claude` is signed in and can read the\n"
+    "    keychain, or\n"
+    "  * run `claude setup-token` on your own machine and write the result to\n"
+    "    state/claude-token (needed anywhere without a keychain, such as the\n"
+    "    supervisor container).\n"
+    "\n"
+    "This will not come right on its own, so the caretaker stops rather than\n"
+    "retrying against it."
+)
+
+
 # A turn must not inherit the environment of whatever started it: another Claude
 # session's variables would point the CLI at the wrong endpoint or the wrong
 # credentials.
@@ -67,6 +80,39 @@ def mcp_config():
             }
         }
     }
+
+
+def check_credentials(timeout=120):
+    """
+    One trivial turn, with no tools, to find out now rather than on the first
+    real wake. An expired token will never come good on its own, so the loop
+    refuses to start rather than beating against it.
+    """
+    with tempfile.TemporaryDirectory() as scratch:
+        try:
+            result = subprocess.run(
+                ["claude", "-p", "Reply with exactly: OK", "--output-format", "json"],
+                capture_output=True, text=True, timeout=timeout,
+                cwd=scratch, env=child_environment(), stdin=subprocess.DEVNULL,
+            )
+        except (subprocess.TimeoutExpired, FileNotFoundError) as error:
+            raise TurnFailed(f"could not run the claude CLI: {error}") from error
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        raise TurnFailed((result.stderr or result.stdout).strip()[-800:] or
+                         f"the CLI exited with {result.returncode} and said nothing")
+
+    if payload.get("is_error") or result.returncode != 0:
+        detail = str(payload.get("result") or f"the CLI exited with {result.returncode}")
+
+        if "logged in" in detail.lower() or "authenticate" in detail.lower():
+            raise NotSignedIn(detail + "\n\n" + CREDENTIAL_HELP)
+
+        raise TurnFailed(detail)
+
+    return True
 
 
 def run(system_prompt, opening, reach, model=None, timeout=1800):
@@ -117,15 +163,7 @@ def run(system_prompt, opening, reach, model=None, timeout=1800):
                      f"the CLI exited with {result.returncode}")
 
         if "logged in" in detail.lower() or "authenticate" in detail.lower():
-            raise NotSignedIn(
-                f"{detail}\n\n"
-                "The CLI could not reach usable credentials. Either:\n"
-                "  * run this from a terminal where `claude` is signed in and can\n"
-                "    read the keychain, or\n"
-                "  * run `claude setup-token` once and put the result in\n"
-                "    CLAUDE_CODE_OAUTH_TOKEN (needed anywhere without a keychain,\n"
-                "    such as the supervisor container)."
-            )
+            raise NotSignedIn(detail + "\n\n" + CREDENTIAL_HELP)
 
         raise TurnFailed(detail)
 
