@@ -35,11 +35,15 @@ departed player into the void, then routed another player to meet her, and only
 found out by calling `present` afterwards. It wrote itself a rule about checking
 first; the tools should simply say so.
 
-**Deliberation cannot fire on a quiet world.** Both loops share a wake predicate
-that needs a player event, and the caretaker's own acts are excluded. So it can
-never take a building turn on an empty world, however long its list of things to
-build. That may be right — cost scales with activity — but it means what it does
-with uninterrupted time and nobody to react to cannot be observed at all.
+**Deliberation can now fire on a quiet world.** *(applied)* Both loops shared a
+wake predicate that needed a player event, so the caretaker could never take a
+building turn on an empty world however long its list of things to build.
+
+The gate existed for the quick turns, which run up to 1440 times a day and would
+otherwise spend most of that waking for nothing. The long turns are capped at 48
+a day by their floor, and a world with nobody in it is still a world worth
+tending. They now wake on the floor alone; the quick turns still need something
+to have happened.
 
 **Interactions that stop answering.** A `once` interaction goes mute after it
 fires, so a player who repeats themselves is talking to nothing. Hit twice in one

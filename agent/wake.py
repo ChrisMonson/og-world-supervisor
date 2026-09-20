@@ -50,10 +50,20 @@ def should_wake(reflex=False, force=False):
     if force:
         return True, f"forced (latest {latest}, last seen {mark['seq']})", mark
 
-    if latest <= mark["seq"]:
-        return False, f"nothing has happened since {mark['seq']}", mark
-
     waited = time.time() - mark["at"]
+
+    # The quick turns wake only for something that happened, because they run
+    # often enough that waking for nothing would be most of what they did. The
+    # long turns are rare, and a world with nobody in it is still a world worth
+    # tending: an empty digest is a turn spent building rather than answering.
+    if latest <= mark["seq"]:
+        if reflex:
+            return False, f"nothing has happened since {mark['seq']}", mark
+
+        if waited < floor:
+            return False, f"nothing has happened, and {int(floor - waited)}s of the floor remain", mark
+
+        return True, f"nothing has happened since {mark['seq']}; a turn with the world to itself", mark
 
     if waited < floor:
         remaining = int(floor - waited)
