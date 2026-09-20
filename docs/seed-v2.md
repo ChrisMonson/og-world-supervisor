@@ -57,6 +57,17 @@ on a busy world, is the one that will hand it a partial picture. Worth either
 raising the cap for that one tool or making the digest the obvious first move
 and the raw feed the drill-down.
 
+**The caretaker's own deploys wake it.** A reload is recorded against the engine
+rather than against whoever caused it, so the wake predicate — which ignores the
+caretaker's own acts — sees it as something that happened in the world. It woke
+once for this and declined in a single step, having recognised its own
+footprint, so the cost is small. But it is the self-triggering loop the predicate
+exists to prevent, in miniature.
+
+Attributing a caretaker-initiated reload to the caretaker fixes it. Excluding the
+engine wholesale would not: an unhandled exception is emitted the same way and
+should certainly wake it.
+
 ## Unresolved questions the caretaker has raised
 
 - Does a living monster block movement? Nobody has ever tried to walk past one.
