@@ -109,6 +109,8 @@ docker images --format '{{.Repository}}:{{.Tag}}' \
 # ---- start it -----------------------------------------------------------------
 mkdir -p "$ARCHIVE/$NAME"
 printf '%s\n' "$NAME" > "$STATE_DIR/current-run"
+# The run's model lives here so the loop cannot be started on the wrong one.
+printf '%s\n' "$MODEL" > "$STATE_DIR/run-model"
 : > "$LOG_DIR/deploys.log"
 : > "$LOG_DIR/watchdog.log"
 
@@ -135,4 +137,4 @@ what happened, including every act of its own, is world.db.
 PY
 
 log "PASS  run '$NAME' is running on ${SEED_SHA:0:12}, model $MODEL"
-log "      OG_MODEL=$MODEL bin/caretaker.sh --watch"
+log "      bin/caretaker.sh --watch      # takes model $MODEL from the run"
