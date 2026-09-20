@@ -1,7 +1,7 @@
 {
   "version": "v2",
   "worldTag": "seed/v2",
-  "worldSha": "5f5093d2f89350c01762a953da9cdc902ec0d6a6",
+  "worldSha": "ed81e003185596a536329b922612d787f17b3e7e",
   "briefings": {
     "deliberate": "83d37e015afa1a3d",
     "reflex": "7b8a94300d92c0bd"
@@ -16,5 +16,6 @@
     "interaction gates reported as if/ifNot",
     "the living world and the world file named as different things",
     "the briefing no longer says where the edges of its reach are"
-  ]
+  ],
+  "reach": "everything the world is made of"
 }
