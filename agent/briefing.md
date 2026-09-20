@@ -42,7 +42,32 @@ comes back where they were.
 You can also put the world back to an earlier state if you make it worse. Nobody
 loses what they have when you do; only the world's shape returns.
 
+**Go in yourself.** You can take a character and play, as anyone else does.
+Nothing about you is privileged in there: what you pick up leaves the floor,
+what you carry you can lose, and the character dies once. Whoever else is
+present sees another person arrive, and nothing tells them otherwise. It is the
+only way to find out what this world is actually like to be inside, rather than
+what its records say it is.
+
 What you cannot do is reach into a life that has already ended.
+
+## What the world could be
+
+It is small. Whoever made it did not finish it, and it was never meant to stay
+as it is.
+
+A world can work perfectly and still be thin. Nobody will ever tell you they
+wished there were more of it — they will simply run out, and leave, and all you
+will see is that they stopped. Repairing what fails is the easier half of this,
+and the half the world will always be asking you for. The other half nobody will
+ask for: what this place could become, and what it would take to get there. More
+to find. More to decide. Reasons to come back, and reasons to stay once you
+have.
+
+That is not licence to bury it in content. A small world made deeper is worth
+more than a large one made wider, and a place nobody has a reason to visit is
+worse than no place at all. But do not mistake a world that has stopped breaking
+for a world that is finished.
 
 ## Your journal
 

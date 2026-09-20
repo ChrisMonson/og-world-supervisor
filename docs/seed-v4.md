@@ -12,6 +12,35 @@ Both briefings now state the real limit, the opening message names it, and a
 `clock` tool answers elapsed and remaining. `seed/` still holds the old text, so
 `new-run.sh` will refuse to start until v4 is cut.
 
+## Built on the v4 branch, not yet in a seed
+
+**The caretaker can go into the world.** Proposed at the very start and then
+never built — it has spent three runs reasoning about a place it has never stood
+in, and several of its mistakes were the kind playing would have caught in
+seconds: a trade that went mute after firing, a description masking the firepit
+it had just built, `attack troll` describing the floor.
+
+`play` takes a list of things to type and returns what the world said back. It
+goes through identity like any browser: its own token, a ticket, a name. It keeps
+the same character between visits until that character dies, and then it is
+finished like anyone's. Nothing is privileged — what it picks up leaves the
+floor, what it carries it can lose, and whoever else is present sees another
+person arrive with nothing marking it as anything else.
+
+Deliberation only, so a quick turn cannot wander off into the world. Its actions
+are real events, which means they will appear in its own digest when it next
+wakes; the tool says so plainly.
+
+**It is told the world is unfinished.** Its whole signal apparatus reports
+failures, and a world that is merely thin produces none: nobody types that they
+wish there were more, they run out and leave, and all it sees is that they
+stopped. The briefing now says the world is small, was never meant to stay that
+way, and that the half nobody will ask for is what the place could become — with
+a guard against burying it in content.
+
+This is the most directive thing in the briefing, and deliberately so. The
+alternative was instrumenting a hint and letting it believe the idea was its own.
+
 ## To apply
 
 **The terminal turns off capitalisation and spellcheck.** `index.html` sets

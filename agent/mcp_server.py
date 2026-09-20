@@ -16,6 +16,7 @@ import os
 import sys
 import traceback
 
+import body
 import deploys
 import journal
 import tools as read_tools
@@ -66,6 +67,41 @@ ACT_TOOLS = [
 ]
 
 SHAPE_TOOLS = [
+    {
+        "name": "play",
+        "description": (
+            "Go into the world yourself and type, as anyone else does. Give a list "
+            "of things to type; you get back what the world said to you.\n\n"
+            "You keep the same character between visits until it dies, and then it "
+            "is finished like any other. Nothing about you is privileged in there: "
+            "what you pick up leaves the floor, what you kill stays dead until it "
+            "returns on its own, and what you are carrying when you die is lying "
+            "where you fell.\n\n"
+            "Anyone else present sees you arrive, move and speak, and nothing marks "
+            "you as anything but another person. What you do is written into the "
+            "world's record under your character's name, the same as theirs — which "
+            "also means it will be there in your own digest when you next wake."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "commands": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "What to type, in order. Forty at most.",
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Only used when you have no living character to return to.",
+                },
+                "pause": {
+                    "type": "number",
+                    "description": "Seconds to wait after each line for the world to answer. Default 0.6.",
+                },
+            },
+            "required": ["commands"],
+        },
+    },
     {
         "name": "list_files",
         "description": "The files this world is made of.",
@@ -179,6 +215,7 @@ HANDLERS = {
     "deploy": lambda **kw: deploys.deploy(),
     "deploy_history": lambda **kw: deploys.history(**kw),
     "rollback": lambda **kw: deploys.rollback(**kw),
+    "play": lambda **kw: body.play(**kw),
 }
 
 
