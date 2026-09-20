@@ -42,8 +42,15 @@ building turn on an empty world however long its list of things to build.
 The gate existed for the quick turns, which run up to 1440 times a day and would
 otherwise spend most of that waking for nothing. The long turns are capped at 48
 a day by their floor, and a world with nobody in it is still a world worth
-tending. They now wake on the floor alone; the quick turns still need something
-to have happened.
+tending. They now wake on the floor alone — but at an hour rather than half an hour, and
+at most three in a row before the world has to do something again.
+
+The numbers behind that: a long turn costs about three dollars. Left at the
+half-hour floor it would have been forty-eight of them a day, or a hundred and
+forty-four dollars spent on a world nobody was in. Three in a row, hourly, gives
+it real uninterrupted time right after people leave — which is when it has the
+most to work from — without paying for a caretaker rereading an empty digest at
+four in the morning. Anything a player does resets the count.
 
 **Interactions that stop answering.** A `once` interaction goes mute after it
 fires, so a player who repeats themselves is talking to nothing. Hit twice in one

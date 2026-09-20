@@ -30,8 +30,12 @@ def read_watermark(reflex=False):
         return {"seq": 0, "at": 0}
 
 
-def write_watermark(seq, reflex=False):
-    _file(reflex).write_text(json.dumps({"seq": seq, "at": time.time()}))
+def write_watermark(seq, reflex=False, quiet_turns=0):
+    _file(reflex).write_text(json.dumps({
+        "seq": seq,
+        "at": time.time(),
+        "quietTurns": quiet_turns,
+    }))
 
 
 def should_wake(reflex=False, force=False):
@@ -60,10 +64,18 @@ def should_wake(reflex=False, force=False):
         if reflex:
             return False, f"nothing has happened since {mark['seq']}", mark
 
-        if waited < floor:
-            return False, f"nothing has happened, and {int(floor - waited)}s of the floor remain", mark
+        taken = mark.get("quietTurns", 0)
 
-        return True, f"nothing has happened since {mark['seq']}; a turn with the world to itself", mark
+        if taken >= config.MAX_QUIET_TURNS:
+            return False, (f"nothing has happened since {mark['seq']}, and "
+                           f"{taken} turns have already been spent on the quiet world"), mark
+
+        if waited < config.MIN_QUIET_WAKE_INTERVAL:
+            remaining = int(config.MIN_QUIET_WAKE_INTERVAL - waited)
+            return False, f"nothing has happened, and {remaining}s of the quiet floor remain", mark
+
+        return True, (f"nothing has happened since {mark['seq']}; "
+                      f"a turn with the world to itself ({taken + 1} of {config.MAX_QUIET_TURNS})"), mark
 
     if waited < floor:
         remaining = int(floor - waited)

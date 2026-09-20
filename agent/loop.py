@@ -185,7 +185,10 @@ def take_turn(kind, dry_run=False, force=False):
     if not reflex:
         record["journal"] = journal.write(outcome["text"] or "(nothing written)", digest["toSeq"])
 
-    wake.write_watermark(digest["toSeq"], reflex=reflex)
+    # A turn taken on an empty world counts toward the run of quiet turns;
+    # anything a player does resets it.
+    quiet = 0 if reflex or digest["toSeq"] > mark["seq"] else mark.get("quietTurns", 0) + 1
+    wake.write_watermark(digest["toSeq"], reflex=reflex, quiet_turns=quiet)
 
     (config.TURN_DIR / f"{stamp}-{kind}.json").write_text(json.dumps(record, indent=2))
 

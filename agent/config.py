@@ -27,6 +27,12 @@ DELIBERATION_TIMEOUT = int(os.environ.get("OG_DELIBERATION_TIMEOUT", "1800"))
 MIN_WAKE_INTERVAL = int(os.environ.get("OG_MIN_WAKE_INTERVAL", "1800"))
 MIN_REFLEX_INTERVAL = int(os.environ.get("OG_MIN_REFLEX_INTERVAL", "60"))
 
+# A long turn on a world nobody is in: rarer, and only a few in a row. Right
+# after people leave it has the most to work from; by the fourth it would be
+# rereading an empty digest.
+MIN_QUIET_WAKE_INTERVAL = int(os.environ.get("OG_MIN_QUIET_WAKE_INTERVAL", "3600"))
+MAX_QUIET_TURNS = int(os.environ.get("OG_MAX_QUIET_TURNS", "3"))
+
 # The caretaker's own acts are excluded from the wake predicate: without this it
 # would wake itself forever.
 GOD_ACTOR = "god"
