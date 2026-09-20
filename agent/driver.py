@@ -116,37 +116,7 @@ def check_credentials(timeout=120):
     return True
 
 
-def _render(events):
-    """A readable account of the turn: what it looked at, and what it said."""
-    lines = []
-
-    for event in events:
-        kind = event.get("type")
-
-        if kind == "assistant":
-            for block in (event.get("message", {}).get("content") or []):
-                if block.get("type") == "text" and block.get("text", "").strip():
-                    lines += ["### it said", "", block["text"].strip(), ""]
-                elif block.get("type") == "thinking" and block.get("thinking", "").strip():
-                    lines += ["### it thought", "", block["thinking"].strip(), ""]
-                elif block.get("type") == "tool_use":
-                    name = block.get("name", "").replace("mcp__caretaker__", "")
-                    arguments = json.dumps(block.get("input") or {}, default=str)
-                    lines += [f"### it looked at `{name}`", "", f"```json\n{arguments[:2000]}\n```", ""]
-
-        elif kind == "user":
-            for block in (event.get("message", {}).get("content") or []):
-                if block.get("type") == "tool_result":
-                    body = block.get("content")
-                    if isinstance(body, list):
-                        body = "".join(part.get("text", "") for part in body if isinstance(part, dict))
-                    body = str(body or "")
-                    lines += ["### and saw", "", f"```\n{body[:3000]}\n```", ""]
-
-        elif kind == "rate_limit_event":
-            lines += [f"> rate limit: {json.dumps(event)[:300]}", ""]
-
-    return "\n".join(lines)
+import render
 
 
 def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path=None):
@@ -251,7 +221,7 @@ def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path
 
     if transcript_path:
         readable = Path(transcript_path).with_suffix(".md")
-        readable.write_text(_render(events))
+        readable.write_text(render.header(transcript_path, events) + "\n" + render.render(events))
 
     return {
         "text": (payload.get("result") or "").strip(),

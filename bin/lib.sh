@@ -13,6 +13,10 @@ LIVE_CONTAINER="${LIVE_CONTAINER:-og-world}"
 LIVE_PORT="${LIVE_PORT:-5080}"
 DATA_VOLUME="${DATA_VOLUME:-og-data}"
 
+# The world's own files live on a volume rather than in the image, so they can be
+# rewritten and reread without the world being turned off.
+WORLD_VOLUME="${WORLD_VOLUME:-og-world-files}"
+
 # Identity runs apart from the world, on its own volume, in its own container.
 # The world never mounts it and never holds a token.
 IDENTITY_CONTAINER="${IDENTITY_CONTAINER:-og-identity}"
@@ -67,6 +71,26 @@ wait_healthy() {
 }
 
 health_json() { curl -fsS "http://localhost:$1/health" 2>/dev/null || echo '{}'; }
+
+# True when everything a revision changes is world data, which can be reread
+# without a restart. Anything under src/ is the engine and needs the full path.
+data_only_change() {
+    local from="$1" to="$2" changed
+
+    [ -n "$from" ] || return 1
+
+    changed="$(world_git diff --name-only "$from" "$to")" || return 1
+    [ -n "$changed" ] || return 1
+
+    while IFS= read -r path; do
+        case "$path" in
+            world/*|journal/*) ;;
+            *) return 1 ;;
+        esac
+    done <<< "$changed"
+
+    return 0
+}
 
 # An unhandled exception is a failure even if the process is somehow still up.
 container_crashed() {

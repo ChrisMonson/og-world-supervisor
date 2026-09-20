@@ -238,6 +238,20 @@ It reads the world over HTTP through a token-gated route. That route reads the
 world database, which has no account data in it, so there is nothing there to
 connect one character to another.
 
+### Reading its turns
+
+```bash
+bin/turns.sh              # every turn it has taken, newest first
+bin/turns.sh last         # read the most recent
+bin/turns.sh 3            # the third from the end
+bin/turns.sh 3 --full     # without summarising what it saw
+```
+
+The raw stream is kept as it was, in `.transcript.jsonl`. Alongside it sits an
+account of the same turn: what it looked at, what came back, what it changed and
+what it said — with large results summarised, since a two hundred event log tells
+you nothing printed in full.
+
 ### Its journal
 
 Entries are written into the world repository and committed as `The Caretaker`,

@@ -23,17 +23,22 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
     world_git worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
 fi
 
+step "putting the world files back to $SHORT"
+"$SUPERVISOR_DIR/bin/sync-world.sh" "$SHA"
+
 remove_container "$LIVE_CONTAINER"
 docker run -d --name "$LIVE_CONTAINER" \
     --restart unless-stopped \
     -p "$LIVE_PORT:8080" \
     --network "$OG_NETWORK" \
     -v "$DATA_VOLUME:/data" \
+    -v "$WORLD_VOLUME:/world" \
     -e "Identity__Url=http://$IDENTITY_CONTAINER:8090" \
     -e "Identity__PublicUrl=http://localhost:$IDENTITY_PORT" \
     -e "Identity__Key=$IDENTITY_WORLD_KEY" \
     -e "OG_COMMIT=$SHORT" \
     -e "CARETAKER_TOKEN=$CARETAKER_TOKEN" \
+    -e "OG_WORLD_SHA=$SHORT" \
     --memory 1g --pids-limit 512 \
     "$IMAGE" >/dev/null || fail "could not start $SHORT"
 

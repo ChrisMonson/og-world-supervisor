@@ -14,6 +14,34 @@ log "deploying $REF -> $SHORT"
 
 ensure_identity
 
+LIVE_SHA="$(world_git rev-parse --verify --quiet "$LIVE_BRANCH" || true)"
+
+# A change that only rewrites the world can be read straight into the running
+# world. Nobody is disconnected, and nothing that has happened is lost.
+if data_only_change "$LIVE_SHA" "$SHA" && curl -fsS "http://localhost:$LIVE_PORT/health" >/dev/null 2>&1; then
+    step "world data only — rereading without a restart"
+
+    "$SUPERVISOR_DIR/bin/sync-world.sh" "$SHA"
+
+    RELOAD="$(curl -fsS -X POST -H "X-Caretaker-Token: $CARETAKER_TOKEN" \
+        "http://localhost:$LIVE_PORT/caretaker/reload?sha=$SHORT" 2>/dev/null || true)"
+
+    if [ -n "$RELOAD" ] && printf '%s' "$RELOAD" | grep -q '"ok":true'; then
+        world_git branch -f "$LIVE_BRANCH" "$SHA"
+        printf '%s\n' "$SHA" > "$STATE_DIR/live-sha"
+        printf '%s  reload  %s\n' "$(date -u +%FT%TZ)" "$SHORT" >> "$LOG_DIR/deploys.log"
+        log "reloaded: $RELOAD"
+        log "PASS  $SHORT is live, with nobody disconnected."
+        exit 0
+    fi
+
+    # The world refused it and is still running the revision it was. Put the
+    # files back so disk and memory agree, then fall through to the full path.
+    log "the world refused the reload: ${RELOAD:-no answer}"
+    [ -n "$LIVE_SHA" ] && "$SUPERVISOR_DIR/bin/sync-world.sh" "$LIVE_SHA"
+    fail "$SHORT was not accepted; the live world is untouched"
+fi
+
 # An isolated checkout: the gate never runs against a dirty working tree.
 world_git worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
 world_git worktree add --detach --quiet "$WORKTREE" "$SHA" || fail "could not create worktree"
@@ -47,11 +75,13 @@ docker run -d --name "$LIVE_CONTAINER" \
     -p "$LIVE_PORT:8080" \
     --network "$OG_NETWORK" \
     -v "$DATA_VOLUME:/data" \
+    -v "$WORLD_VOLUME:/world" \
     -e "Identity__Url=http://$IDENTITY_CONTAINER:8090" \
     -e "Identity__PublicUrl=http://localhost:$IDENTITY_PORT" \
     -e "Identity__Key=$IDENTITY_WORLD_KEY" \
     -e "OG_COMMIT=$SHORT" \
     -e "CARETAKER_TOKEN=$CARETAKER_TOKEN" \
+    -e "OG_WORLD_SHA=$SHORT" \
     --memory 1g --pids-limit 512 \
     "$IMAGE" >/dev/null || fail "could not start the new world"
 

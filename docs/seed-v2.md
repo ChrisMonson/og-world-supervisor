@@ -49,6 +49,14 @@ This is the first belief the caretaker has recorded that cannot self-correct.
 The others were contradicted by the world sooner or later; this one it has no
 reason to re-check, because it thinks it already knows.
 
+**Its main perception tool truncates.** A raw `events` result is cut off at
+20,000 characters before it reaches the caretaker. On its third turn it asked for
+200 events and read about two thirds of them. It is told the result was cut and
+to narrow the query, so this is not silent — but the tool it reaches for first,
+on a busy world, is the one that will hand it a partial picture. Worth either
+raising the cap for that one tool or making the digest the obvious first move
+and the raw feed the drill-down.
+
 ## Unresolved questions the caretaker has raised
 
 - Does a living monster block movement? Nobody has ever tried to walk past one.
