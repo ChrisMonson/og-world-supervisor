@@ -34,7 +34,7 @@ docker run -d --name "$LIVE_CONTAINER" \
     -v "$DATA_VOLUME:/data" \
     -v "$WORLD_VOLUME:/world" \
     -e "Identity__Url=http://$IDENTITY_CONTAINER:8090" \
-    -e "Identity__PublicUrl=http://localhost:$IDENTITY_PORT" \
+    -e "Identity__PublicPort=$IDENTITY_PORT" \
     -e "Identity__Key=$IDENTITY_WORLD_KEY" \
     -e "OG_COMMIT=$SHORT" \
     -e "CARETAKER_TOKEN=$CARETAKER_TOKEN" \

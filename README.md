@@ -104,6 +104,22 @@ the world to the seed, and clears the caretaker's memory of it.
 See [docs/runs.md](docs/runs.md) for what a reset touches, what is archived, and
 why runs are only loosely comparable without a scripted player.
 
+## Playing from elsewhere on the network
+
+Both the world and the gate publish on every interface, so the world is already
+reachable from another machine at `http://<this machine>:5080`. The page works
+out where the gate is from the address it was reached on, so nothing needs
+configuring and nothing breaks when the machine's address changes.
+
+Find the address with `ipconfig getifaddr en0`, and open it on a phone on the
+same network.
+
+Two things to know. The caretaker's own route is published too, and is protected
+only by its token — which is a long secret, but it is the only thing standing
+between the network and the world's whole record. And there is no encryption:
+this is plain HTTP on a home network, not something to put on the open internet.
+For that you would want a tunnel rather than a forwarded port.
+
 ## Identity
 
 A visitor's browser holds a token. It exchanges that token for a **ticket**
