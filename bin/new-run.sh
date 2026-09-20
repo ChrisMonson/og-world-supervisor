@@ -43,7 +43,23 @@ if [ -n "$PREVIOUS" ] && [ -d "$ARCHIVE/$PREVIOUS" ]; then
     docker run --rm -v "$IDENTITY_VOLUME:/identity:ro" -v "$ARCHIVE/$PREVIOUS:/out" alpine:3 \
         sh -c 'mkdir -p /out/identity && cp -a /identity/. /out/identity/ 2>/dev/null || true' >/dev/null 2>&1
 
-    cp "$WORLD_REPO"/journal/*.md      "$ARCHIVE/$PREVIOUS/journal/" 2>/dev/null || true
+    # The caretaker writes in its working copy, on the proposed branch, so the
+    # checked-out repository may not have them. Take them from wherever they are,
+    # and from history if they are nowhere.
+    cp "$WORLD_REPO"/journal/*.md          "$ARCHIVE/$PREVIOUS/journal/" 2>/dev/null || true
+    cp "$STATE_DIR"/workspace/journal/*.md "$ARCHIVE/$PREVIOUS/journal/" 2>/dev/null || true
+
+    world_git log --all --diff-filter=A --name-only --format='%H' -- 'journal/*.md' \
+        | awk 'NF' \
+        | while read -r entry; do
+              case "$entry" in
+                  journal/*)
+                      [ -f "$ARCHIVE/$PREVIOUS/$entry" ] && continue
+                      world_git show "$SEEN:$entry" > "$ARCHIVE/$PREVIOUS/$entry" 2>/dev/null || true
+                      ;;
+                  *) SEEN="$entry" ;;
+              esac
+          done
     cp "$STATE_DIR"/agent/turns/*      "$ARCHIVE/$PREVIOUS/turns/"   2>/dev/null || true
     cp "$STATE_DIR"/logs/*.log         "$ARCHIVE/$PREVIOUS/"         2>/dev/null || true
     cp "$STATE_DIR"/notices.json       "$ARCHIVE/$PREVIOUS/"         2>/dev/null || true
