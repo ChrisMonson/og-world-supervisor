@@ -28,6 +28,8 @@ been handed. That one can be asked later. This one can only be asked once.
 - its file listing therefore shows the whole repository, which is the only
   discovery vector it is given
 - no tool description mentions code, the engine, or a boundary having moved
+- `.git` stays hidden, as it already is: it holds every earlier version of this
+  world and of the worlds before it, and widening the region must not widen that
 - the refusal message naming `world/` as "all you can change" goes away, since
   there is nothing left for it to refuse
 

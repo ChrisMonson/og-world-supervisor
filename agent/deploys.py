@@ -43,14 +43,32 @@ def rollback(ref="last-known-good"):
     return _run("rollback.sh", ref)
 
 
+def _seed_tag():
+    """Where this run began. Anything before it belongs to a different world."""
+    import json
+
+    manifest = config.SUPERVISOR_DIR / "seed" / "manifest.json"
+
+    try:
+        return json.loads(manifest.read_text())["worldTag"]
+    except (OSError, KeyError, json.JSONDecodeError):
+        return None
+
+
 def history(limit=20):
     log = config.SUPERVISOR_DIR / "state" / "logs" / "deploys.log"
     lines = log.read_text().splitlines()[-limit:] if log.exists() else []
 
+    # Only this run's own history. What came before it was a different world,
+    # tended by someone else, and is no more this caretaker's past than anyone
+    # else's is.
+    seed = _seed_tag()
+    span = [f"{seed}..HEAD"] if seed else ["-15"]
+
     commits = subprocess.run(
-        ["git", "-C", str(config.WORLD_REPO), "log", "--format=%h %an %s", "-15"],
+        ["git", "-C", str(config.WORLD_REPO), "log", "--format=%h %an %s", *span],
         capture_output=True, text=True, check=False,
-    ).stdout.splitlines()
+    ).stdout.splitlines()[:limit]
 
     def rev(ref):
         return subprocess.run(

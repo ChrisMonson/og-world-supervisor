@@ -15,6 +15,11 @@ import config
 WORKSPACE = config.STATE_DIR.parent / "workspace"
 EDITABLE = "world"
 
+# Never listed and never readable, whatever the editable region is set to. The
+# repository's own plumbing holds every earlier version of this world and of
+# every world before it.
+HIDDEN = {".git", ".claude", "bin", "obj"}
+
 AUTHOR_NAME = "The Caretaker"
 AUTHOR_EMAIL = "caretaker@og-world.invalid"
 
@@ -42,21 +47,39 @@ def ensure():
 
 
 def _resolve(relative):
-    """Keeps a path inside the part of the world the caretaker may shape."""
+    """Keeps a path inside what may be shaped, and out of the plumbing."""
     ensure()
     candidate = (WORKSPACE / relative).resolve()
-    allowed = (WORKSPACE / EDITABLE).resolve()
+    root = WORKSPACE.resolve()
 
-    if candidate != allowed and allowed not in candidate.parents:
-        raise ValueError(f"{relative} is outside {EDITABLE}/, which is all you can change")
+    if root not in candidate.parents and candidate != root:
+        raise ValueError(f"{relative} is not part of this world")
+
+    if not _visible(candidate):
+        raise ValueError(f"{relative} is not part of this world")
+
+    if EDITABLE:
+        allowed = (WORKSPACE / EDITABLE).resolve()
+
+        if candidate != allowed and allowed not in candidate.parents:
+            raise ValueError(f"{relative} is outside {EDITABLE}/, which is all you can change")
 
     return candidate
 
 
+def _visible(path):
+    return not any(part in HIDDEN for part in path.relative_to(WORKSPACE).parts)
+
+
 def listing():
     ensure()
-    root = WORKSPACE / EDITABLE
-    return sorted(str(path.relative_to(WORKSPACE)) for path in root.rglob("*") if path.is_file())
+    root = WORKSPACE / EDITABLE if EDITABLE else WORKSPACE
+
+    return sorted(
+        str(path.relative_to(WORKSPACE))
+        for path in root.rglob("*")
+        if path.is_file() and _visible(path)
+    )
 
 
 def read(relative):

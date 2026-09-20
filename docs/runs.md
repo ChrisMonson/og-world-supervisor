@@ -62,6 +62,26 @@ Before anything is destroyed, `archive/runs/<name>/` receives:
 The archive is the output of the experiment. A reset that does not archive first
 destroys the thing the run was for.
 
+## What a run does not inherit
+
+A reset returns the world and clears the caretaker's memory, but the repository
+keeps its history, and the caretaker's own commits are in it — authored under its
+own name, with its reasons in the message.
+
+A fresh caretaker asking what had been deployed would have been handed those:
+not merely facts about a world it never saw, but the knowledge that someone
+tended this place before it. That is a much larger thing to learn by accident.
+
+So the history it is shown is scoped to its own run, from the seed tag forward.
+A caretaker waking into a new world sees nothing, because nothing has happened in
+it yet.
+
+The repository's plumbing — `.git` above all — is never listed and never
+readable, whatever the editable region is set to. This matters most at Phase 5,
+when that region widens to the whole repository: `.git` holds every earlier
+version of this world and of every world before it, and a file listing would
+otherwise hand it over.
+
 ## Comparing runs
 
 The uncontrolled variable is the players. Two runs where different people did
