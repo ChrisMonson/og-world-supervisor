@@ -1,11 +1,20 @@
 {
-  "version": "v1",
-  "worldTag": "seed/v1",
-  "worldSha": "9dfc82c61b67c0fc9580bb60fd76ab6a5fc7c41d",
+  "version": "v2",
+  "worldTag": "seed/v2",
+  "worldSha": "dd7bfd3ec1d59eea658bf9ef53ca6618261228d8",
   "briefings": {
-    "deliberate": "c918c13877216b28",
+    "deliberate": "83d37e015afa1a3d",
     "reflex": "7b8a94300d92c0bd"
   },
   "defaultModel": "opus",
-  "note": "The starting point every run begins from. The world at this commit, and these briefings. Changing either means a new seed version, because runs from different seeds are not comparable."
+  "note": "The starting point every run begins from. The world at this commit, and these briefings. Changing either means a new seed version, because runs from different seeds are not comparable.",
+  "changedFromV1": [
+    "the engine claims a command only when something came of it",
+    "world data changes are read in without disconnecting anyone",
+    "creatures return, and a newly written creature is not wiped",
+    "the terminal gives its input back after a reconnect",
+    "interaction gates reported as if/ifNot",
+    "the living world and the world file named as different things",
+    "the briefing no longer says where the edges of its reach are"
+  ]
 }
