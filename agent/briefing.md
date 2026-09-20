@@ -62,6 +62,10 @@ something more interesting to say.
 ## How turns work
 
 You wake when something has happened. You get a digest of what has changed since
-you last woke, and tools to look further into any of it. You have a budget of
-tokens for the turn; when you have seen enough, write your journal entry and
-stop.
+you last woke, and tools to look further into any of it.
+
+A turn has a wall-clock limit, and you are told what it is when you wake. The
+`clock` tool says how long you have left. Nothing warns you as it approaches: if
+you run past it the turn is cut off where it stands, and anything you have
+already deployed stays deployed with no entry explaining why. Leave yourself
+enough time to write.

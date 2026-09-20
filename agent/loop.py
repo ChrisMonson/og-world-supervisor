@@ -49,8 +49,11 @@ def briefing(kind):
 
 
 def opening(kind, digest, mark, recent):
+    limit = config.REFLEX_TIMEOUT if kind == "reflex" else config.DELIBERATION_TIMEOUT
+
     parts = [
         f"You are waking at {datetime.now(timezone.utc).isoformat(timespec='seconds')}.",
+        f"This turn is cut off after {limit} seconds. Ask `clock` for what is left.",
         "",
         f"You last looked at event {mark['seq']}. The world is now at event {digest['toSeq']}.",
         "",

@@ -153,6 +153,15 @@ TOOLS = [
         "input_schema": {"type": "object", "properties": {}},
     },
     {
+        "name": "clock",
+        "description": (
+            "How long this turn has run and how long is left before it is cut off. "
+            "Nothing warns you as the end approaches, so ask if you are doing "
+            "something long."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "past_journal",
         "description": "Your own earlier entries, oldest first. What you were thinking when you last looked.",
         "input_schema": {
@@ -177,7 +186,28 @@ HANDLERS = {
     "location": lambda **kw: world_client.location(**kw),
     "actions": lambda **kw: world_client.actions(),
     "past_journal": lambda **kw: journal.entries(**kw),
+    "clock": lambda **kw: _clock(),
 }
+
+
+def _clock():
+    """What is left of this turn, from the deadline the harness set."""
+    import os
+    import time
+
+    deadline = float(os.environ.get("CARETAKER_DEADLINE") or 0)
+    started = float(os.environ.get("CARETAKER_STARTED") or 0)
+
+    if not deadline:
+        return {"note": "this turn has no limit set"}
+
+    now = time.time()
+
+    return {
+        "elapsedSeconds": round(now - started) if started else None,
+        "remainingSeconds": max(0, round(deadline - now)),
+        "limitSeconds": round(deadline - started) if started else None,
+    }
 
 
 def run(name, arguments):

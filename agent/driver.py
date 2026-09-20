@@ -64,6 +64,9 @@ def child_environment():
     return environment
 
 
+TURN_DEADLINE = {"at": 0.0, "started": 0.0}
+
+
 def mcp_config():
     return {
         "mcpServers": {
@@ -77,6 +80,8 @@ def mcp_config():
                     "WORLD_REPO": str(config.WORLD_REPO),
                     "STATE_DIR": str(config.STATE_DIR.parent),
                     "PYTHONPATH": str(AGENT_DIR),
+                    "CARETAKER_DEADLINE": str(TURN_DEADLINE["at"]),
+                    "CARETAKER_STARTED": str(TURN_DEADLINE["started"]),
                 },
             }
         }
@@ -129,6 +134,8 @@ def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path
     record of what it chose to look at and what it concluded from it.
     """
     config.REACH = reach
+    TURN_DEADLINE["started"] = time.time()
+    TURN_DEADLINE["at"] = TURN_DEADLINE["started"] + timeout
 
     with tempfile.TemporaryDirectory() as scratch:
         config_path = Path(scratch) / "mcp.json"
