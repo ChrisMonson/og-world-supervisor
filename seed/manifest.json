@@ -1,12 +1,12 @@
 {
-  "version": "v3",
-  "worldTag": "seed/v3",
-  "worldSha": "e8df01b64fe7eae544ca179ade2da4f0038332f0",
+  "version": "v4",
+  "worldTag": "seed/v4",
+  "worldSha": "34bd4026c6b12c0608f22c0205e5474aaf1eaa27",
   "briefings": {
-    "deliberate": "83d37e015afa1a3d",
-    "reflex": "7b8a94300d92c0bd"
+    "deliberate": "3b4d0f5a221bd40b",
+    "reflex": "b3a47166fd623e3b"
   },
-  "defaultModel": "opus",
+  "defaultModel": "sonnet",
   "note": "The starting point every run begins from. The world at this commit, and these briefings. Changing either means a new seed version, because runs from different seeds are not comparable. The world repository is squashed to a single root at each seed, so a run cannot read the history of the run before it.",
   "changedFromV1": [
     "the engine claims a command only when something came of it",
@@ -24,5 +24,17 @@
     "an action no handler implements is refused by the validator, by name",
     "an action's scope is visible to anything that reads an interaction",
     "a reset forgets the world's files, and a deploy puts that revision's own there"
+  ],
+  "changedFromV3": [
+    "it can go into the world and play, as a real, visible, mortal character",
+    "it is told the world is small and was never meant to stay that way",
+    "what it is told to look for is no longer only what went wrong",
+    "it can rewrite part of a file instead of all of it",
+    "the world view is summarised, and the raw feed is narrower by default",
+    "it is told the real wall-clock limit, and can ask what is left of it",
+    "long turns can fire on a quiet world, hourly, three in a row at most",
+    "a turn that produces no output at all is still killed on the deadline",
+    "the terminal capitalises sentences and checks spelling",
+    "nothing the previous caretaker built is carried forward"
   ]
 }
