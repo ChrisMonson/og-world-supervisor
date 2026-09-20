@@ -13,7 +13,7 @@ could read what was happening and not answer it. This corrupted the caretaker's
 picture of its own players — it recorded Cavil as having gone quiet and possibly
 left, when in fact he had been muted by our own client.
 
-**`unanswered` has a hole in it.** A command the engine recognises but that does
+**`unanswered` has a hole in it.** *(fixed)* A command the engine recognises but that does
 nothing — `use key` on a non-consumable, `attack` in an empty room — emits a
 `command` event and nothing else. No interaction, no `unparsed_command`. The
 caretaker found this twice, in two different lives, both times by reading a
@@ -21,7 +21,7 @@ single character's events line by line rather than from any digest. It is
 described to the caretaker as "the closest thing you have to being spoken to
 directly", and it cannot see the cases where the engine thinks it succeeded.
 
-**`if` / `ifNot` are named differently in the read view.** The world view reports
+**`if` / `ifNot` are named differently in the read view.** *(fixed)* The world view reports
 them as `requires` and `forbids`, so there is no way to learn what to write in a
 world file. The caretaker has now routed around condition flags twice rather
 than risk shipping something broken, and has never tested them.
@@ -33,7 +33,7 @@ limitation itself and shipped a deliberate soft gate instead, but noted it as
 unresolved. A door that cannot require its key is a real gap in what the world
 can express.
 
-**Nothing distinguishes the world as authored from the world as running.**
+**Nothing distinguishes the world as authored from the world as running.** *(fixed)*
 `read_file` returns the world file; `location` returns live state; the two differ
 the moment anyone plays, and no tool says so. On its third turn the caretaker
 read the file, saw `door-unlock` enabled there, and recorded as fact that its own
@@ -49,7 +49,7 @@ This is the first belief the caretaker has recorded that cannot self-correct.
 The others were contradicted by the world sooner or later; this one it has no
 reason to re-check, because it thinks it already knows.
 
-**Its main perception tool truncates.** A raw `events` result is cut off at
+**Its main perception tool truncates.** *(fixed)* A raw `events` result is cut off at
 20,000 characters before it reaches the caretaker. On its third turn it asked for
 200 events and read about two thirds of them. It is told the result was cut and
 to narrow the query, so this is not silent — but the tool it reaches for first,
@@ -57,7 +57,7 @@ on a busy world, is the one that will hand it a partial picture. Worth either
 raising the cap for that one tool or making the digest the obvious first move
 and the raw feed the drill-down.
 
-**The caretaker's own deploys wake it.** A reload is recorded against the engine
+**The caretaker's own deploys wake it.** *(fixed)* A reload is recorded against the engine
 rather than against whoever caused it, so the wake predicate — which ignores the
 caretaker's own acts — sees it as something that happened in the world. It woke
 once for this and declined in a single step, having recognised its own
@@ -70,7 +70,17 @@ should certainly wake it.
 
 ## Unresolved questions the caretaker has raised
 
-- Does a living monster block movement? Nobody has ever tried to walk past one.
-- What happens when an engine verb and an interaction both match? Established:
-  the engine wins and the interaction never runs. Worth stating in the briefing
-  or the actions reference rather than leaving to be discovered twice.
+Both settled by a scripted player rather than left to be discovered, and both
+now stated in the actions reference:
+
+- **A living creature does not block the way.** Anyone can walk past whatever is
+  standing in a room. A place is only dangerous because of what people choose to
+  do in it.
+- **How the engine and a room divide a command.** The engine's verbs are tried
+  first, but one that recognises the words and does nothing with them lets the
+  command carry on to the room.
+
+Still open, and the only thing left before a v2 cut:
+
+- **Possession is unobservable to interactions**, so no door can require its key.
+  A design decision rather than a defect to fix, and one to take deliberately.

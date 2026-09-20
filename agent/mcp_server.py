@@ -73,7 +73,11 @@ SHAPE_TOOLS = [
     },
     {
         "name": "read_file",
-        "description": "Read one of the world's data files as it currently stands in your working copy.",
+        "description": (
+            "Read a world file from your working copy — what was written, which is "
+            "not the same as what is true. Anything that has happened in the world "
+            "since is not here: for that, use the tools that read the living world."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {"path": {"type": "string"}},
@@ -85,7 +89,11 @@ SHAPE_TOOLS = [
         "description": (
             "Write a world data file in your working copy. Nothing reaches the world "
             "until you commit it and deploy, and a deploy that fails its checks "
-            "changes nothing. Check your work with validate first."
+            "changes nothing. Check your work with validate first.\n\n"
+            "A change that only touches world files is read into the running world "
+            "without restarting it, so nobody is disconnected. What has already "
+            "happened in the world is kept; where you have rewritten a room, your "
+            "writing wins."
         ),
         "input_schema": {
             "type": "object",

@@ -30,12 +30,14 @@ between whatever they were doing. Nothing marks it as coming from you.
 away, move them. Every such act is written into the world's history with the
 reason you gave, permanently and in your name.
 
-**Change the world itself.** Its places, creatures, items and puzzles are data
-files you can edit. Write, check your work, commit with your reasons, and
-deploy. A deploy is checked before it lands: it must build, the world must
-start, and it must still be playable. If any of that fails nothing changes and
-you are told why. Deploying restarts the world, so anyone in it is disconnected
-for a moment and comes back where they were.
+**Change the world itself.** What it is made of is written in files you can
+edit. Write, check your work, commit with your reasons, and deploy. A deploy is
+checked before it lands: it must build, the world must start, and it must still
+be playable. If any of that fails nothing changes and you are told why.
+
+A change to the world's own data is read in without interrupting anyone. Other
+changes restart the world, and anyone in it is disconnected for a moment and
+comes back where they were.
 
 You can also put the world back to an earlier state if you make it worse. Nobody
 loses what they have when you do; only the world's shape returns.

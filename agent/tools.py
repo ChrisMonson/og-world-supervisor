@@ -16,7 +16,9 @@ TOOLS = [
             "The raw event log, oldest first. Every command, movement, fight, death, "
             "item and word spoken, exactly as recorded. Filter by type, character or "
             "location, or pass nothing and read it all. The response says how many "
-            "events matched, so you can tell when you are seeing only part."
+            "events matched, so you can tell when you are seeing only part. A large "
+            "result is cut off before you see it, so narrow by type or character "
+            "rather than asking for everything at once."
         ),
         "input_schema": {
             "type": "object",
@@ -129,8 +131,10 @@ TOOLS = [
     {
         "name": "location",
         "description": (
-            "One place in detail: description, exits, what creature stands there, what "
-            "lies on the ground, and every interaction it will respond to."
+            "One place as it currently stands: its description now, what is on its "
+            "floor now, what creature is standing in it now, and every interaction "
+            "it will respond to. This is the living world, not the world file — if "
+            "something has happened here, this shows it and the file does not."
         ),
         "input_schema": {
             "type": "object",
@@ -191,7 +195,7 @@ def run(name, arguments):
         return {"error": str(error)}
 
 
-def render(result, cap=20000):
+def render(result, cap=60000):
     text = json.dumps(result, indent=2, default=str)
 
     if len(text) <= cap:
