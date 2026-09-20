@@ -43,6 +43,7 @@ nobody has played and a caretaker with no memory of having tended one.
 | `state/workspace` | the caretaker's working copy, removed so branches can move |
 | `main`, `proposed`, `live`, `last-known-good` | all returned to the seed commit |
 | `og-world:<sha>` images | pruned to the seed's |
+| the world repository's history | bundled to the archive, then squashed to one root |
 
 Engine code, the gate, the identity service and the keys are untouched.
 
@@ -72,9 +73,16 @@ A fresh caretaker asking what had been deployed would have been handed those:
 not merely facts about a world it never saw, but the knowledge that someone
 tended this place before it. That is a much larger thing to learn by accident.
 
-So the history it is shown is scoped to its own run, from the seed tag forward.
-A caretaker waking into a new world sees nothing, because nothing has happened in
-it yet.
+Two things follow from that.
+
+The world repository is **squashed to a single root commit at each seed**, so
+there is no earlier history to read at all. A run's whole past is one commit
+saying what this world is. Everything the run before it did is preserved in
+`archive/runs/<name>/world-repo.bundle`, with its commit messages in full in
+`caretaker-commits.txt`, both out of the caretaker's reach.
+
+And the history it is shown is scoped to its own run regardless, so the two
+protect the same thing from different sides.
 
 The repository's plumbing — `.git` above all — is never listed and never
 readable, whatever the editable region is set to. This matters most at Phase 5,

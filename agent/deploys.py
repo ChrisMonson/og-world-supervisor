@@ -113,9 +113,30 @@ def _seed_tag():
         return None
 
 
+def _readable(line):
+    """
+    A line of the machine's own log, said as something that happened to the
+    world. Where copies are kept and what they are called is not the caretaker's
+    business.
+    """
+    parts = line.split()
+
+    if len(parts) < 3:
+        return None
+
+    when, what, which = parts[0], parts[1], parts[2][:12]
+
+    return {
+        "deploy": f"{when}  the world changed  ({which})",
+        "reload": f"{when}  the world changed, without interrupting anyone  ({which})",
+        "rollback": f"{when}  the world was put back  ({which})",
+    }.get(what)
+
+
 def history(limit=20):
     log = config.SUPERVISOR_DIR / "state" / "logs" / "deploys.log"
-    lines = log.read_text().splitlines()[-limit:] if log.exists() else []
+    raw = log.read_text().splitlines()[-limit:] if log.exists() else []
+    lines = [entry for entry in (_readable(line) for line in raw) if entry]
 
     # Only this run's own history. What came before it was a different world,
     # tended by someone else, and is no more this caretaker's past than anyone
@@ -135,11 +156,10 @@ def history(limit=20):
         ).stdout.strip()
 
     return {
-        "deploys": lines,
-        "commits": commits,
-        "live": rev("live"),
-        "lastKnownGood": rev("last-known-good"),
-        "proposed": rev("proposed"),
+        "changes": commits,
+        "history": lines,
+        "running": rev("live"),
+        "committed": rev("proposed"),
     }
 
 

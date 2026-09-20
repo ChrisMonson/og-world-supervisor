@@ -1,13 +1,13 @@
 {
   "version": "v2",
   "worldTag": "seed/v2",
-  "worldSha": "dd7bfd3ec1d59eea658bf9ef53ca6618261228d8",
+  "worldSha": "5f5093d2f89350c01762a953da9cdc902ec0d6a6",
   "briefings": {
     "deliberate": "83d37e015afa1a3d",
     "reflex": "7b8a94300d92c0bd"
   },
   "defaultModel": "opus",
-  "note": "The starting point every run begins from. The world at this commit, and these briefings. Changing either means a new seed version, because runs from different seeds are not comparable.",
+  "note": "The starting point every run begins from. The world at this commit, and these briefings. Changing either means a new seed version, because runs from different seeds are not comparable. The world repository is squashed to a single root at each seed, so a run cannot read the history of the run before it.",
   "changedFromV1": [
     "the engine claims a command only when something came of it",
     "world data changes are read in without disconnecting anyone",

@@ -65,7 +65,7 @@ def opening(kind, digest, mark, recent):
         standing = deploys.history(limit=10)
         parts += [
             "",
-            "Where the world's history stands:",
+            "What has been done to the world so far:",
             "",
             "```json",
             json.dumps(standing, indent=2, default=str),
