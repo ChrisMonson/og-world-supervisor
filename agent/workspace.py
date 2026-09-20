@@ -2,9 +2,6 @@
 
 A git worktree on the proposed branch. Changes are written here, checked, and
 committed; nothing here is live until a deploy passes the gate.
-
-Paths are confined to the world's data directory: this is the tier for places,
-creatures, items and puzzles, not for the engine's code.
 """
 
 import subprocess
@@ -13,7 +10,9 @@ from pathlib import Path
 import config
 
 WORKSPACE = config.STATE_DIR.parent / "workspace"
-EDITABLE = "world"
+
+# Everything the world is made of.
+EDITABLE = ""
 
 # Never listed and never readable, whatever the editable region is set to. The
 # repository's own plumbing holds every earlier version of this world and of

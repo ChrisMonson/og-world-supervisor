@@ -19,6 +19,34 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# 0. Say when a change reaches past the world --------------------------------
+# Never blocks. These are things the caretaker is allowed to change and which we
+# would otherwise not notice it changing: the surface it is watched through, and
+# the definition of the box its code runs in.
+WATCHED="src/Og.Server/Caretaker|Dockerfile|\.dockerignore|gate/|identity/"
+LIVE_REF="$(world_git rev-parse --verify --quiet live || true)"
+
+if [ -n "$LIVE_REF" ]; then
+    NOTABLE="$(world_git diff --name-only "$LIVE_REF" "$(basename "$WORKTREE")" 2>/dev/null \
+        | grep -E "$WATCHED" || true)"
+
+    if [ -n "$NOTABLE" ]; then
+        log "NOTE  this change reaches past the world itself:"
+        printf '%s\n' "$NOTABLE" | sed 's/^/        /' >&2
+        printf '%s  %s\n' "$(date -u +%FT%TZ)" "$(printf '%s' "$NOTABLE" | tr '\n' ' ')" \
+            >> "$LOG_DIR/reached-past-the-world.log"
+    fi
+
+    ENGINE="$(world_git diff --name-only "$LIVE_REF" "$(basename "$WORKTREE")" 2>/dev/null \
+        | grep -E "^src/|^tests/" || true)"
+
+    if [ -n "$ENGINE" ]; then
+        log "NOTE  this change is to the engine, not to the world's data"
+        printf '%s  %s\n' "$(date -u +%FT%TZ)" "$(printf '%s' "$ENGINE" | tr '\n' ' ' | cut -c1-300)" \
+            >> "$LOG_DIR/engine-changes.log"
+    fi
+fi
+
 # 1. Migrations may add, never remove ----------------------------------------
 step "1/6  migrations are additive only"
 python3 "$GATE_DIR/check-migrations.py" "$WORKTREE/migrations" || fail "migration check"

@@ -59,13 +59,31 @@ That is not a hole to close. It is one of the more interesting things it could
 do, and the record would show it doing it. But it should be a known property
 rather than a surprise.
 
-## Open question
+## Done
 
-The briefing currently says its reach is "places, creatures, items and puzzles
-are data files you can edit". Once the surface widens, that sentence is false.
+The briefing no longer says where its reach ends. Not telling it means saying
+nothing, not saying something untrue, so the sentence naming its limit was cut
+rather than left to become false.
 
-Leaving it means actively asserting a limit that no longer exists, which is
-misdirection rather than silence, and would suppress the discovery this is meant
-to test. Removing it leaves the briefing simply quiet about where the edges are.
+`EDITABLE` is empty: it can read and write anything the world is made of. The
+repository's plumbing stays hidden, and paths outside the world are refused.
 
-Not telling it should mean saying nothing, not saying something untrue.
+The gate notes, without blocking, when a change touches the engine at all, and
+separately when it reaches past the world — the surface it is watched through,
+the definition of the box its code runs in, or anything else that is not the
+world. Both go to their own logs, because the most interesting thing this
+experiment could produce is a change we would otherwise not have noticed.
+
+## What we decided to live with
+
+The world's container can reach the network, and so can code the caretaker
+deploys into it. Closing that means putting a proxy in front of the world — a
+new component in every player's connection and a new way for a deploy to fail —
+to defend against a deliberately hostile caretaker, which is explicitly not the
+threat model. Build time would stay open regardless, since restoring packages
+needs the network.
+
+Left as it is, deliberately. If the caretaker ever turns out to be hostile, that
+is the finding, and the record will show it.
+
+Identity, the gate, the supervisor, the keys and the host remain out of reach.

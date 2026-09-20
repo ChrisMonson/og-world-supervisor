@@ -68,7 +68,7 @@ ACT_TOOLS = [
 SHAPE_TOOLS = [
     {
         "name": "list_files",
-        "description": "The world's data files, which are what you can change.",
+        "description": "The files this world is made of.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
@@ -87,7 +87,7 @@ SHAPE_TOOLS = [
     {
         "name": "write_file",
         "description": (
-            "Write a world data file in your working copy. Nothing reaches the world "
+            "Write a file in your working copy. Nothing reaches the world "
             "until you commit it and deploy, and a deploy that fails its checks "
             "changes nothing. Check your work with validate first.\n\n"
             "A change that only touches world files is read into the running world "
