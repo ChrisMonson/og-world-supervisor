@@ -11,6 +11,60 @@ import config
 BIN = config.SUPERVISOR_DIR / "bin"
 
 
+# What the checks are called, in the order they run. The caretaker is told which
+# of these a change passed and which it did not; it is not told what the machine
+# around it is made of.
+CHECKS = {
+    "1/6": "the changes to the world's records only add",
+    "2/6": "it builds",
+    "3/6": "the world's own tests pass",
+    "4/6": "a copy of it starts on an empty world",
+    "5/6": "that copy is playable",
+    "6/6": "it stays up",
+}
+
+# Lines describing the machinery rather than the change: images, containers,
+# stored copies, and instructions for tools the caretaker does not have.
+NOISE = ("snapshotting", "stopping the live world", "starting ",
+         "gate passed for", "Run promote", "deploying ", "live:")
+
+
+def _account(output, ok):
+    """
+    What happened to a change, said plainly: which checks it met, and where it
+    stopped if it stopped.
+    """
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    account = []
+    reached = None
+
+    for line in lines:
+        for marker, description in CHECKS.items():
+            if marker in line:
+                reached = description
+
+        if any(noise in line for noise in NOISE):
+            continue
+
+        if "PASS" in line and reached:
+            continue
+
+        if line.startswith(("PASS", "FAIL")) or "checks passed" in line or "smoke" in line.lower():
+            account.append(line)
+
+    for marker, description in CHECKS.items():
+        if marker in output:
+            account.insert(len([a for a in account if a.startswith("checked")]),
+                           f"checked: {description}")
+
+    if ok:
+        account.append("The change is live.")
+    else:
+        account.append(f"It stopped at: {reached or 'the first check'}. Nothing changed.")
+
+    return account
+
+
 def _run(script, *args, timeout=900):
     result = subprocess.run(
         [str(BIN / script), *args],
@@ -18,23 +72,27 @@ def _run(script, *args, timeout=900):
     )
 
     output = (result.stdout + result.stderr).strip()
+    ok = result.returncode == 0
 
-    return {
-        "ok": result.returncode == 0,
-        "output": output[-4000:],
-    }
+    answer = {"ok": ok, "checks": _account(output, ok)}
+
+    # When something failed, the reason for it is the useful part.
+    if not ok:
+        reasons = [line.strip() for line in output.splitlines()
+                   if any(word in line for word in ("error", "FAIL", "REJECTED", "refused"))
+                   and not any(noise in line for noise in NOISE)]
+        answer["why"] = reasons[-12:]
+
+    return answer
 
 
 def deploy():
-    """Runs the health contract, and deploys only if it passes."""
+    """Puts a committed change into the world, if it passes its checks."""
     outcome = _run("deploy.sh", "proposed")
     outcome["deployed"] = outcome["ok"]
 
     if not outcome["ok"]:
-        outcome["note"] = (
-            "The change did not pass and the world was left as it was. "
-            "The output says which check failed."
-        )
+        outcome["note"] = "The world was left as it was."
 
     return outcome
 
