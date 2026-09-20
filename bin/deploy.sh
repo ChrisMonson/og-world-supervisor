@@ -68,6 +68,9 @@ docker run --rm \
     alpine:3 sh -c 'cp -a /data /snap/data 2>/dev/null || true; cp -a /identity /snap/identity 2>/dev/null || true' \
     >/dev/null 2>&1 || log "warn  snapshot skipped (no data yet)"
 
+step "putting the world files in place for $SHORT"
+"$SUPERVISOR_DIR/bin/sync-world.sh" "$SHA"
+
 step "starting $SHORT"
 remove_container "$LIVE_CONTAINER"
 docker run -d --name "$LIVE_CONTAINER" \

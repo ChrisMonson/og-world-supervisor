@@ -43,6 +43,11 @@ if [ -n "$PREVIOUS" ] && [ -d "$ARCHIVE/$PREVIOUS" ]; then
     docker run --rm -v "$IDENTITY_VOLUME:/identity:ro" -v "$ARCHIVE/$PREVIOUS:/out" alpine:3 \
         sh -c 'mkdir -p /out/identity && cp -a /identity/. /out/identity/ 2>/dev/null || true' >/dev/null 2>&1
 
+    # The world as it stood when the run ended, which the repository may no
+    # longer hold if the run's own changes were never deployed.
+    docker run --rm -v "$WORLD_VOLUME:/world:ro" -v "$ARCHIVE/$PREVIOUS:/out" alpine:3 \
+        sh -c 'mkdir -p /out/world && cp -a /world/. /out/world/ 2>/dev/null || true' >/dev/null 2>&1
+
     # The caretaker writes in its working copy, on the proposed branch, so the
     # checked-out repository may not have them. Take them from wherever they are,
     # and from history if they are nowhere.
@@ -73,7 +78,7 @@ step "stopping the world"
 remove_container "$LIVE_CONTAINER"
 
 step "forgetting what was played"
-docker volume rm "$DATA_VOLUME" "$IDENTITY_VOLUME" >/dev/null 2>&1 || true
+docker volume rm "$DATA_VOLUME" "$IDENTITY_VOLUME" "$WORLD_VOLUME" >/dev/null 2>&1 || true
 
 step "clearing the caretaker's memory"
 rm -rf "$STATE_DIR/agent" "$STATE_DIR/notices.json" "$STATE_DIR/intervention.json" \

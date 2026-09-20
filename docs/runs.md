@@ -43,6 +43,7 @@ nobody has played and a caretaker with no memory of having tended one.
 | `state/workspace` | the caretaker's working copy, removed so branches can move |
 | `main`, `proposed`, `live`, `last-known-good` | all returned to the seed commit |
 | `og-world:<sha>` images | pruned to the seed's |
+| `og-world-files` volume | wiped, and refilled from the seed on the next deploy |
 | the world repository's history | bundled to the archive, then squashed to one root |
 
 Engine code, the gate, the identity service and the keys are untouched.
@@ -89,6 +90,21 @@ readable, whatever the editable region is set to. This matters most at Phase 5,
 when that region widens to the whole repository: `.git` holds every earlier
 version of this world and of every world before it, and a file listing would
 otherwise hand it over.
+
+## The reset's recurring failure
+
+Three times now a reset has left something behind, always the same shape: state
+living somewhere the reset did not know about.
+
+- a WAL database archived as its main file alone, keeping 10 events of 134
+- journals written in a worktree the reset had already moved past
+- the world's own files, which moved onto a volume when reloading arrived, and
+  which a reset never cleared — so a run began in the previous run's world and
+  nobody noticed until the caretaker said the repository and the world disagreed
+
+Before trusting a reset, ask where each kind of state actually lives, not where
+it is written from. A volume, a worktree and a write-ahead log are all places
+the obvious copy misses.
 
 ## Comparing runs
 

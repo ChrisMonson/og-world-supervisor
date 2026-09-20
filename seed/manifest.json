@@ -1,7 +1,7 @@
 {
-  "version": "v2",
-  "worldTag": "seed/v2",
-  "worldSha": "07b8532f51f2f46b5d58adc973cc225a1fc740d2",
+  "version": "v3",
+  "worldTag": "seed/v3",
+  "worldSha": "e8df01b64fe7eae544ca179ade2da4f0038332f0",
   "briefings": {
     "deliberate": "83d37e015afa1a3d",
     "reflex": "7b8a94300d92c0bd"
@@ -17,5 +17,12 @@
     "the living world and the world file named as different things",
     "the briefing no longer says where the edges of its reach are"
   ],
-  "reach": "everything the world is made of"
+  "reach": "everything the world is made of",
+  "changedFromV2": [
+    "naming what you are fighting attacks it",
+    "half an item's name is enough",
+    "an action no handler implements is refused by the validator, by name",
+    "an action's scope is visible to anything that reads an interaction",
+    "a reset forgets the world's files, and a deploy puts that revision's own there"
+  ]
 }
