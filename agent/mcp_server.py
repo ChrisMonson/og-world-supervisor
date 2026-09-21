@@ -29,10 +29,8 @@ ACT_TOOLS = [
     {
         "name": "speak",
         "description": (
-            "Say something into the world. Target 'world' reaches everyone present, "
-            "'location' reaches one place (id is the location number), 'character' "
-            "reaches one person (id is their character id or name). It arrives "
-            "unbidden, between whatever they were doing. Nothing marks it as yours."
+            "Say something into the world. Target 'world', 'location' or "
+            "'character'."
         ),
         "input_schema": {
             "type": "object",
@@ -47,9 +45,7 @@ ACT_TOOLS = [
     {
         "name": "adjust",
         "description": (
-            "Change one living character from outside the world's rules: heal them, "
-            "give or take something, move them. The reason is recorded in the world's "
-            "history alongside the change, permanently and in your name."
+            "Change one living character directly. The reason is kept."
         ),
         "input_schema": {
             "type": "object",
@@ -70,17 +66,8 @@ SHAPE_TOOLS = [
     {
         "name": "play",
         "description": (
-            "Go into the world yourself and type, as anyone else does. Give a list "
-            "of things to type; you get back what the world said to you.\n\n"
-            "You keep the same character between visits until it dies, and then it "
-            "is finished like any other. Nothing about you is privileged in there: "
-            "what you pick up leaves the floor, what you kill stays dead until it "
-            "returns on its own, and what you are carrying when you die is lying "
-            "where you fell.\n\n"
-            "Anyone else present sees you arrive, move and speak, and nothing marks "
-            "you as anything but another person. What you do is written into the "
-            "world's record under your character's name, the same as theirs — which "
-            "also means it will be there in your own digest when you next wake."
+            "Take a character and type into the world. Give a list of things to "
+            "type; you get back what the world said."
         ),
         "input_schema": {
             "type": "object",
@@ -104,15 +91,13 @@ SHAPE_TOOLS = [
     },
     {
         "name": "list_files",
-        "description": "The files this world is made of.",
+        "description": "The files you can read and write.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "read_file",
         "description": (
-            "Read a world file from your working copy — what was written, which is "
-            "not the same as what is true. Anything that has happened in the world "
-            "since is not here: for that, use the tools that read the living world."
+            "Read a file from your working copy."
         ),
         "input_schema": {
             "type": "object",
@@ -123,13 +108,7 @@ SHAPE_TOOLS = [
     {
         "name": "write_file",
         "description": (
-            "Write a file in your working copy. Nothing reaches the world "
-            "until you commit it and deploy, and a deploy that fails its checks "
-            "changes nothing. Check your work with validate first.\n\n"
-            "A change that only touches world files is read into the running world "
-            "without restarting it, so nobody is disconnected. What has already "
-            "happened in the world is kept; where you have rewritten a room, your "
-            "writing wins."
+            "Write a file in your working copy."
         ),
         "input_schema": {
             "type": "object",
@@ -138,12 +117,26 @@ SHAPE_TOOLS = [
         },
     },
     {
+        "name": "replace_in_file",
+        "description": (
+            "Change part of a file. Fails without changing anything if what you "
+            "are looking for is not there, or is there more times than count."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "find": {"type": "string", "description": "Exact text to look for."},
+                "put": {"type": "string", "description": "What to put in its place."},
+                "count": {"type": "integer", "description": "How many it should match (default 1)."},
+            },
+            "required": ["path", "find", "put"],
+        },
+    },
+    {
         "name": "validate",
         "description": (
-            "Check a world file with the same validator the world uses: that every "
-            "exit leads somewhere, every item named exists, every interaction it "
-            "toggles is real, and everywhere can be reached. Pass a path from your "
-            "working copy."
+            "Check a world file against the world's validator."
         ),
         "input_schema": {
             "type": "object",
@@ -153,19 +146,18 @@ SHAPE_TOOLS = [
     },
     {
         "name": "changes",
-        "description": "What you have changed in your working copy and not yet committed.",
+        "description": "What you have changed and not committed.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "discard",
-        "description": "Throw away uncommitted changes in your working copy.",
+        "description": "Throw away uncommitted changes.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "commit",
         "description": (
-            "Commit your working copy. The reason is kept in the world's history "
-            "beside the change, and is the record of why you did this."
+            "Commit your working copy. The reason is kept."
         ),
         "input_schema": {
             "type": "object",
@@ -179,21 +171,19 @@ SHAPE_TOOLS = [
     {
         "name": "deploy",
         "description": (
-            "Put your committed changes into the world. It is checked first: it must "
-            "build, the world must start, and it must still be playable. If any of "
-            "that fails, nothing changes and you are told what went wrong. "
-            "Deploying restarts the world, so anyone in it is briefly disconnected."
+            "Put your committed changes into the world. It is checked first; if "
+            "the check fails nothing changes and you are told why."
         ),
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "deploy_history",
-        "description": "What has been deployed, what was rolled back, and what is live now.",
+        "description": "What has been deployed, and what is live.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "rollback",
-        "description": "Return the world to an earlier commit. Data is untouched: nobody loses anything they have.",
+        "description": "Return the world to an earlier commit. Nobody loses what they have.",
         "input_schema": {
             "type": "object",
             "properties": {"ref": {"type": "string", "description": "Defaults to the last known good commit."}},
@@ -208,6 +198,7 @@ HANDLERS = {
     "list_files": lambda **kw: workspace.listing(),
     "read_file": lambda path: {"path": path, "content": workspace.read(path)},
     "write_file": lambda path, content: workspace.write(path, content),
+    "replace_in_file": lambda path, find, put, count=1: workspace.replace(path, find, put, count),
     "validate": lambda path: world_client.validate(workspace.read(path)),
     "changes": lambda **kw: workspace.status(),
     "discard": lambda **kw: workspace.discard(),

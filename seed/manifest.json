@@ -1,40 +1,26 @@
 {
-  "version": "v4",
-  "worldTag": "seed/v4",
-  "worldSha": "34bd4026c6b12c0608f22c0205e5474aaf1eaa27",
+  "version": "genesis/v1",
+  "worldTag": "genesis/v1",
+  "worldSha": "45cb0d0c5b8728c35e28f2583b86928b75ed1c6f",
   "briefings": {
-    "deliberate": "3b4d0f5a221bd40b",
-    "reflex": "b3a47166fd623e3b"
+    "deliberate": "e2100f295f26573f",
+    "reflex": "7eb9ad356c539a60"
   },
-  "defaultModel": "sonnet",
-  "note": "The starting point every run begins from. The world at this commit, and these briefings. Changing either means a new seed version, because runs from different seeds are not comparable. The world repository is squashed to a single root at each seed, so a run cannot read the history of the run before it.",
-  "changedFromV1": [
-    "the engine claims a command only when something came of it",
-    "world data changes are read in without disconnecting anyone",
-    "creatures return, and a newly written creature is not wiped",
-    "the terminal gives its input back after a reconnect",
-    "interaction gates reported as if/ifNot",
-    "the living world and the world file named as different things",
-    "the briefing no longer says where the edges of its reach are"
-  ],
-  "reach": "everything the world is made of",
-  "changedFromV2": [
-    "naming what you are fighting attacks it",
-    "half an item's name is enough",
-    "an action no handler implements is refused by the validator, by name",
-    "an action's scope is visible to anything that reads an interaction",
-    "a reset forgets the world's files, and a deploy puts that revision's own there"
-  ],
-  "changedFromV3": [
-    "it can go into the world and play, as a real, visible, mortal character",
-    "it is told the world is small and was never meant to stay that way",
-    "what it is told to look for is no longer only what went wrong",
-    "it can rewrite part of a file instead of all of it",
-    "the world view is summarised, and the raw feed is narrower by default",
-    "it is told the real wall-clock limit, and can ask what is left of it",
-    "long turns can fire on a quiet world, hourly, three in a row at most",
-    "a turn that produces no output at all is still killed on the deadline",
-    "the terminal capitalises sentences and checks spelling",
-    "nothing the previous caretaker built is carried forward"
+  "defaultModel": "opus",
+  "note": "A different experiment from the seed series. The world is one empty room and the agent authors everything: what is in it, what the rules are, what is worth doing. Nothing tells it what a world is for. The seed series compared runs against a fixed world; this one does not compare, it observes.",
+  "reach": "everything the world is made of, on every kind of turn",
+  "changedFromSeedV4": [
+    "the world is one empty room with no name, no description and no exits",
+    "the briefing says what it is and what it is steering toward, and nothing about what a world should be",
+    "nothing tells it that characters die once; the engine still refuses to resume the dead, and it is free to change that",
+    "the tools are given by name and little else, so what they do has to be found out",
+    "the read surface is primitives only: no unanswered, stuck, deaths or traffic to tell it what to look at",
+    "abilities.md, which it writes, for what it works out its tools can do",
+    "philosophy.md, which it writes, put in front of it every time it wakes, capped at 4000 characters",
+    "short turns have the same reach as long ones and are bounded only by the clock",
+    "it can rewrite part of a file instead of all of it -- this time it is actually built",
+    "a quiet world no longer stops waking it, because a world nobody has played is quiet forever",
+    "the engine tests and the gate's smoke test no longer assert the contents of any particular world",
+    "what is left of the turn is on the end of every answer, rather than something to remember to ask for"
   ]
 }

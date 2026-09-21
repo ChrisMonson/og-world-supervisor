@@ -71,6 +71,9 @@ class Player:
     def mark(self):
         return len(self.lines)
 
+    def kinds(self, since=0):
+        return [kind for kind, _ in self.lines[since:]]
+
     async def leave(self):
         if self.socket:
             await self.socket.close()
@@ -82,6 +85,11 @@ async def run(world_url, identity_url):
     def check(label, ok):
         checks.append((label, bool(ok)))
         print(f"  {'PASS' if ok else 'FAIL'}  {label}")
+
+    # These check the server's contract, not the game. What rooms exist, whether
+    # anything can be fought, whether there is anything to pick up -- all of that
+    # is the world's own business and may be nothing at all. A world with one
+    # empty room in it is a world, and it has to be able to pass through here.
 
     alice = await Player(world_url, identity_url).arrive()
     await alice.name("GateAlice")
@@ -100,35 +108,33 @@ async def run(world_url, identity_url):
     check("speech reaches the room", "gate check" in alice.text(mark))
 
     mark = alice.mark()
-    await bob.do("north")
-    await alice.drain(0.6)
-    check("movement is announced", "GateBob" in alice.text(mark))
-
-    before = alice.mark()
     await alice.do("look")
-    check("look describes the world", len(alice.text(before)) > 20)
+    check("the world answers a look", len(alice.text(mark).strip()) > 0)
 
+    # Whatever these mean in this world, they must not throw.
     await alice.do("inventory")
     await alice.do("health")
-
-    # Combat must resolve without throwing, whoever wins.
     await bob.do("attack")
-    check("combat resolves", True)
+    await bob.do("north")
 
-    # A character's state survives a reconnect.
-    await alice.do("east")
-    await alice.do("search the camp")
+    mark = alice.mark()
+    await alice.do("polish the moon")
+    await alice.drain(0.5)
+    check("unrecognised input is answered rather than dropped",
+          len(alice.text(mark).strip()) > 0)
+
+    # A character survives a reconnect: the world knows this token already has
+    # one and does not ask for a new name. Asking is what it does for a stranger.
     token = alice.token
     await alice.leave()
     await asyncio.sleep(0.5)
 
     again = await Player(world_url, identity_url).arrive(token)
-    await again.do("inventory")
-    check("a reconnect resumes the same character", "spoon" in again.text().lower())
+    check("a reconnect resumes the same character", "needName" not in again.kinds())
 
-    # Unknown input is recorded rather than crashing anything.
-    await again.do("polish the moon")
-    check("unrecognised input is handled", True)
+    mark = again.mark()
+    await again.do("look")
+    check("the world is still answering at the end", len(again.text(mark).strip()) > 0)
 
     await again.leave()
     await bob.leave()
