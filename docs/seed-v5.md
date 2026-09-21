@@ -29,6 +29,31 @@ it back over a run or an archive. See the degradation note below.
 
 ## For the v5 seed itself
 
+**A surgical edit tool.** `write_file` is the only way to change a file, so
+editing one trigger array in `world/maps/starter.json` means regenerating all
+35KB of it. The caretaker worked this out for itself and wrote its own rule --
+*"change trigger arrays and descriptions; don't go near the long prose unless
+that's the point of the change"* -- because `validate` and the gate bound the
+structural risk but nothing catches a silently reworded paragraph.
+
+It cost more than safety. It ended a turn with 1050 seconds left and chose not to
+start `take all`, the clearest unanswered ask in the world, rather than risk
+leaving HEAD undeployed again. Cheap edits being expensive is what makes it hoard
+clock and prefer world-file tinkering to engine work.
+
+`replace_in_file(path, find, put, count=1)`: exact match, failing loudly on zero
+matches or on more than `count`, so a missed match is an error and never a silent
+no-op. Same seed-boundary reasoning as the clock below -- it is a visible change
+to the tool surface, and it would otherwise arrive the turn after the caretaker
+wrote a journal entry about not having it.
+
+**`worldSha` lies after a restart.** The container derives it from the image at
+startup rather than from the files on the volume, so a hot-reloaded world reverts
+to the image's sha in `/health` while actually serving the newer files. Verified
+after the reboot on 09-21: reported `880d692`, actually serving `ad2f6b2`'s text.
+It is the field both the caretaker and our own scripts read to tell whether a
+reload took.
+
 **The clock should be ambient.** A turn at 02:04 spent 1780s of its 1800s
 allowance and shipped nothing, having designed the whole feature and run out of
 time before writing a line of it. It called `clock` at step 4 and again at step
