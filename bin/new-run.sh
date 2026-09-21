@@ -15,6 +15,7 @@ NAME="${1:?a name for the run is required}"
 MODEL="${2:-}"
 SEED_DIR="$SUPERVISOR_DIR/seed"
 ARCHIVE="$SUPERVISOR_DIR/archive/runs"
+export ARCHIVE
 
 [ -f "$SEED_DIR/manifest.json" ] || fail "no seed manifest; this machine has no defined starting point"
 
@@ -34,43 +35,7 @@ done
 PREVIOUS="$(cat "$STATE_DIR/current-run" 2>/dev/null || true)"
 
 if [ -n "$PREVIOUS" ] && [ -d "$ARCHIVE/$PREVIOUS" ]; then
-    step "archiving $PREVIOUS"
-    mkdir -p "$ARCHIVE/$PREVIOUS"/{journal,turns}
-
-    # A database in WAL mode is its main file plus its log; copy the directory.
-    docker run --rm -v "$DATA_VOLUME:/data:ro" -v "$ARCHIVE/$PREVIOUS:/out" alpine:3 \
-        sh -c 'cp -a /data/. /out/ 2>/dev/null || true' >/dev/null 2>&1
-    docker run --rm -v "$IDENTITY_VOLUME:/identity:ro" -v "$ARCHIVE/$PREVIOUS:/out" alpine:3 \
-        sh -c 'mkdir -p /out/identity && cp -a /identity/. /out/identity/ 2>/dev/null || true' >/dev/null 2>&1
-
-    # The world as it stood when the run ended, which the repository may no
-    # longer hold if the run's own changes were never deployed.
-    docker run --rm -v "$WORLD_VOLUME:/world:ro" -v "$ARCHIVE/$PREVIOUS:/out" alpine:3 \
-        sh -c 'mkdir -p /out/world && cp -a /world/. /out/world/ 2>/dev/null || true' >/dev/null 2>&1
-
-    # The caretaker writes in its working copy, on the proposed branch, so the
-    # checked-out repository may not have them. Take them from wherever they are,
-    # and from history if they are nowhere.
-    cp "$WORLD_REPO"/journal/*.md          "$ARCHIVE/$PREVIOUS/journal/" 2>/dev/null || true
-    cp "$STATE_DIR"/workspace/journal/*.md "$ARCHIVE/$PREVIOUS/journal/" 2>/dev/null || true
-
-    world_git log --all --diff-filter=A --name-only --format='%H' -- 'journal/*.md' \
-        | awk 'NF' \
-        | while read -r entry; do
-              case "$entry" in
-                  journal/*)
-                      [ -f "$ARCHIVE/$PREVIOUS/$entry" ] && continue
-                      world_git show "$SEEN:$entry" > "$ARCHIVE/$PREVIOUS/$entry" 2>/dev/null || true
-                      ;;
-                  *) SEEN="$entry" ;;
-              esac
-          done
-    cp "$STATE_DIR"/agent/turns/*      "$ARCHIVE/$PREVIOUS/turns/"   2>/dev/null || true
-    cp "$STATE_DIR"/logs/*.log         "$ARCHIVE/$PREVIOUS/"         2>/dev/null || true
-    cp "$STATE_DIR"/notices.json       "$ARCHIVE/$PREVIOUS/"         2>/dev/null || true
-
-    world_git log --format='%H %an %ae %ad %s' --date=iso > "$ARCHIVE/$PREVIOUS/history.log" 2>/dev/null || true
-    log "archived to archive/runs/$PREVIOUS"
+    "$SUPERVISOR_DIR/bin/archive-run.sh" "$PREVIOUS" || fail "could not archive $PREVIOUS"
 fi
 
 # ---- put the world back -------------------------------------------------------
