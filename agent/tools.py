@@ -1,7 +1,12 @@
-"""The caretaker's tools.
+"""What it can look at.
 
-Read-only. Every one of these looks at something; none of them change anything.
-The raw event feed is always reachable unfiltered, so a summary is never a wall.
+Read-only, and deliberately bare. Earlier runs had tools named `unanswered`,
+`stuck`, `deaths` and `traffic`, which told it -- before it had read a single
+event -- that those were the categories worth having, and that six commands was
+roughly where being stuck began. That is an opinion encoded as an API, and it
+survived every attempt to take the opinions out of the briefing.
+
+What is left are the primitives. If stuckness matters, it can find that out.
 """
 
 import json
@@ -12,98 +17,37 @@ import world_client
 TOOLS = [
     {
         "name": "events",
-        "description": (
-            "The raw event log, oldest first. Every command, movement, fight, death, "
-            "item and word spoken, exactly as recorded. Filter by type, character or "
-            "location, or pass nothing and read it all. The response says how many "
-            "events matched, so you can tell when you are seeing only part. A large "
-            "result is cut off before you see it, so narrow by type or character "
-            "rather than asking for everything at once."
-        ),
+        "description": "The event log, oldest first.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "since": {"type": "integer", "description": "Exclusive lower bound on sequence. 0 for the beginning."},
+                "since": {"type": "integer", "description": "Exclusive lower bound on sequence."},
                 "limit": {"type": "integer", "description": "Maximum to return (default 200, max 2000)."},
-                "type": {"type": "string", "description": "One event type, e.g. death, speech, unparsed_command."},
-                "character": {"type": "string", "description": "Restrict to one character's id."},
-                "location": {"type": "integer", "description": "Restrict to one place."},
+                "type": {"type": "string", "description": "One event type."},
+                "character": {"type": "string", "description": "One character's id."},
+                "location": {"type": "integer", "description": "One place."},
             },
         },
-    },
-    {
-        "name": "unanswered",
-        "description": (
-            "What people typed that the world had no answer for, grouped by what they "
-            "said and ordered by how often. The closest thing you have to being asked "
-            "for something directly."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "since": {"type": "integer"},
-                "limit": {"type": "integer"},
-            },
-        },
-    },
-    {
-        "name": "speech",
-        "description": (
-            "What has been said. Mode is one of say (to the room), yell (to everyone), "
-            "whisper (to one person) or pray (to nobody the world knows of)."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "since": {"type": "integer"},
-                "mode": {"type": "string", "enum": ["say", "yell", "whisper", "pray"]},
-                "limit": {"type": "integer"},
-            },
-        },
-    },
-    {
-        "name": "deaths",
-        "description": "Who died, where, to what, and how long they had lived.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"since": {"type": "integer"}, "limit": {"type": "integer"}},
-        },
-    },
-    {
-        "name": "stuck",
-        "description": (
-            "Living characters who have typed several commands in one place without "
-            "moving or achieving anything."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {"threshold": {"type": "integer", "description": "Commands before counting as stuck (default 6)."}},
-        },
-    },
-    {
-        "name": "traffic",
-        "description": (
-            "Where people go: events, distinct visitors, deaths and unanswered "
-            "commands per place, plus the places nobody has ever walked into."
-        ),
-        "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "present",
-        "description": "Who is in the world right now, where they are standing, and their health.",
+        "description": "Who is in the world now.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "characters",
-        "description": "Characters, newest first. Living only by default; pass living=false for the dead as well.",
+        "description": "Characters, newest first.",
         "input_schema": {
             "type": "object",
-            "properties": {"living": {"type": "boolean"}, "limit": {"type": "integer"}},
+            "properties": {
+                "living": {"type": "boolean", "description": "Default true."},
+                "limit": {"type": "integer"},
+            },
         },
     },
     {
         "name": "character",
-        "description": "One character in full: name, when it was born, whether it still lives, and its current state.",
+        "description": "One character.",
         "input_schema": {
             "type": "object",
             "properties": {"id": {"type": "string"}},
@@ -112,7 +56,7 @@ TOOLS = [
     },
     {
         "name": "character_events",
-        "description": "Everything one character has done, from birth. A single life rather than a population.",
+        "description": "One character's events, from birth.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -125,17 +69,15 @@ TOOLS = [
     },
     {
         "name": "world",
-        "description": "The whole world as it currently stands: every place, its exits, and the items that exist.",
-        "input_schema": {"type": "object", "properties": {}},
+        "description": "The world as it currently stands.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"full": {"type": "boolean", "description": "Default false."}},
+        },
     },
     {
         "name": "location",
-        "description": (
-            "One place as it currently stands: its description now, what is on its "
-            "floor now, what creature is standing in it now, and every interaction "
-            "it will respond to. This is the living world, not the world file — if "
-            "something has happened here, this shows it and the file does not."
-        ),
+        "description": "One place as it currently stands.",
         "input_schema": {
             "type": "object",
             "properties": {"id": {"type": "integer"}},
@@ -143,48 +85,29 @@ TOOLS = [
         },
     },
     {
-        "name": "actions",
-        "description": (
-            "Everything an interaction can be made to do, and how triggers, "
-            "conditions and scope work. Read this before writing an interaction: "
-            "the world is capable of more than the interactions currently in it "
-            "happen to use."
-        ),
-        "input_schema": {"type": "object", "properties": {}},
-    },
-    {
         "name": "clock",
-        "description": (
-            "How long this turn has run and how long is left before it is cut off. "
-            "Nothing warns you as the end approaches, so ask if you are doing "
-            "something long."
-        ),
+        "description": "Elapsed and remaining seconds in this turn.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "past_journal",
-        "description": "Your own earlier entries, oldest first. What you were thinking when you last looked.",
+        "description": "Your earlier entries, oldest first.",
         "input_schema": {
             "type": "object",
-            "properties": {"limit": {"type": "integer", "description": "How many recent entries (default 5)."}},
+            "properties": {"limit": {"type": "integer", "description": "Default 5."}},
         },
     },
 ]
 
+
 HANDLERS = {
     "events": lambda **kw: world_client.events(**kw),
-    "unanswered": lambda **kw: world_client.unanswered(**kw),
-    "speech": lambda **kw: world_client.speech(**kw),
-    "deaths": lambda **kw: world_client.deaths(**kw),
-    "stuck": lambda **kw: world_client.stuck(**kw),
-    "traffic": lambda **kw: world_client.traffic(),
     "present": lambda **kw: world_client.present(),
     "characters": lambda **kw: world_client.characters(**kw),
     "character": lambda **kw: world_client.character(**kw),
     "character_events": lambda **kw: world_client.character_events(**kw),
     "world": lambda **kw: world_client.world(),
     "location": lambda **kw: world_client.location(**kw),
-    "actions": lambda **kw: world_client.actions(),
     "past_journal": lambda **kw: journal.entries(**kw),
     "clock": lambda **kw: _clock(),
 }

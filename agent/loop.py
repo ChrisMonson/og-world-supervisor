@@ -17,6 +17,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
+import carried
 import config
 import deploys
 import driver
@@ -95,6 +96,18 @@ def opening(kind, digest, mark, recent):
                 "```",
             ]
 
+    concluded, clipped = carried.philosophy()
+
+    if concluded.strip():
+        parts += ["", "From philosophy.md, which you wrote:", "", concluded.strip()]
+
+        if clipped:
+            parts += ["", "(That is the cap. The rest of the file was cut off here.)"]
+
+    size = carried.abilities_size()
+    parts += ["", f"abilities.md holds {size} characters." if size
+              else "abilities.md is empty."]
+
     if recent:
         parts += ["", "Your last entries, oldest first:", ""]
         for entry in recent:
@@ -144,7 +157,7 @@ def take_turn(kind, dry_run=False, force=False):
         print("=" * 72)
         print(first)
         print("\n" + "=" * 72)
-        print(f"reach={'act' if reflex else 'shape'}  model={config.REFLEX_MODEL if reflex else config.MODEL}")
+        print(f"reach=shape  model={config.REFLEX_MODEL if reflex else config.MODEL}")
         print("=" * 72)
         return None
 
@@ -157,7 +170,9 @@ def take_turn(kind, dry_run=False, force=False):
             transcript_path=str(transcript),
             system_prompt=system,
             opening=first,
-            reach="act" if reflex else "shape",
+            # The same reach on both kinds of turn: a short turn is short, not
+            # smaller. What it may do is bounded by the clock and nothing else.
+            reach="shape",
             model=config.REFLEX_MODEL if reflex else config.MODEL,
             timeout=config.REFLEX_TIMEOUT if reflex else config.DELIBERATION_TIMEOUT,
         )

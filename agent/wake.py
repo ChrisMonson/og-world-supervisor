@@ -142,7 +142,7 @@ def should_wake(reflex=False, force=False):
 
         taken = mark.get("quietTurns", 0)
 
-        if taken >= config.MAX_QUIET_TURNS:
+        if config.MAX_QUIET_TURNS and taken >= config.MAX_QUIET_TURNS:
             return False, (f"nothing has happened since {mark['seq']}, and "
                            f"{taken} turns have already been spent on the quiet world"), mark
 

@@ -97,6 +97,44 @@ def write(relative, content):
     return {"path": relative, "bytes": len(content)}
 
 
+def replace(relative, find, put, count=1):
+    """
+    Change part of a file without rewriting the whole of it.
+
+    The alternative was regenerating the file every time, which for a world file
+    of any size means passing thousands of words of prose through a rewrite to
+    change one line of it. That is slow, it costs a turn's clock, and the risk it
+    carries is not structural -- the validator catches a broken file -- but a
+    quietly reworded paragraph nobody notices.
+
+    It fails rather than guessing. No match is an error; more matches than asked
+    for is an error naming how many there were. A replace that silently did
+    nothing would be worse than no tool at all, because it looks like success.
+    """
+    path = _resolve(relative)
+
+    if not path.is_file():
+        raise ValueError(f"{relative} does not exist")
+
+    if not find:
+        raise ValueError("nothing to find")
+
+    content = path.read_text()
+    found = content.count(find)
+
+    if found == 0:
+        raise ValueError(f"not found in {relative}; nothing was changed")
+
+    if found > count:
+        raise ValueError(
+            f"found {found} times in {relative} but was asked to change {count}; "
+            "nothing was changed. Give more of the surrounding text, or raise count.")
+
+    path.write_text(content.replace(find, put, count))
+
+    return {"path": relative, "replaced": found, "bytes": len(content) - len(find) * found + len(put) * found}
+
+
 def status():
     ensure()
     result = _git("status", "--porcelain")
