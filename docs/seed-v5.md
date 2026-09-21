@@ -52,10 +52,15 @@ clock was spent waiting on the API, the turn eight minutes before it died with
 never touched overage, so this was transient serving degradation, not quota.
 
 The caretaker concluded *"the file reads ate 29 minutes"* and left itself a note
-to check the clock more often. It was wrong, and it had no way not to be. Worth
-considering whether a turn served that badly should be discarded and retaken
-rather than allowed to write a journal, since the lesson it draws is false and
-the next turn inherits it.
+to check the clock more often. It was wrong, and it had no way not to be.
+
+**Decided: the entry stands.** A turn served that badly could have been discarded
+and retaken, so that a false lesson never entered the journal the next turn
+reads. It was not. The caretaker's own method -- five entries of *my intuitions
+are worse than the records* -- is the thing that would have to catch this, and
+letting it find its own error is a better test of that method than protecting it
+from the error. It costs something: the next turn may hurry its reading to avoid
+a cost that was never there. Watch for that rather than pre-empting it.
 
 **It stopped building rooms on purpose.** Two entries argue the position
 explicitly -- *"what I built, and why it is not more rooms"*, *"what I'd want is
