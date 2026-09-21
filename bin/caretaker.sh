@@ -15,11 +15,15 @@ export WORLD_URL="${WORLD_URL:-http://localhost:$LIVE_PORT}"
 
 # The model belongs to the run, not to whoever starts the loop. An explicit
 # OG_MODEL still wins; without one, the run's own choice is used.
+OG_MODEL="${OG_MODEL:-}"
+OG_REFLEX_MODEL="${OG_REFLEX_MODEL:-}"
+
 if [ -z "$OG_MODEL" ] && [ -r "$STATE_DIR/run-model" ]; then
     OG_MODEL="$(cat "$STATE_DIR/run-model")"
 fi
+
+[ -z "$OG_REFLEX_MODEL" ] && OG_REFLEX_MODEL="$OG_MODEL"
 [ -n "$OG_MODEL" ] && export OG_MODEL
-[ -n "$OG_REFLEX_MODEL" ] || OG_REFLEX_MODEL="$OG_MODEL"
 [ -n "$OG_REFLEX_MODEL" ] && export OG_REFLEX_MODEL
 
 [ -n "$CARETAKER_TOKEN" ] || fail "no caretaker token; run bin/init-keys.sh"
