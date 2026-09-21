@@ -23,6 +23,12 @@ REFLEX_MODEL = os.environ.get("OG_REFLEX_MODEL", "opus")
 REFLEX_TIMEOUT = int(os.environ.get("OG_REFLEX_TIMEOUT", "300"))
 DELIBERATION_TIMEOUT = int(os.environ.get("OG_DELIBERATION_TIMEOUT", "1800"))
 
+# Below this, the turn was not slow because of what it was doing. A healthy turn
+# runs at 40-90 output tokens a second; a degraded window has run at 4. The
+# caretaker cannot tell the difference from inside -- a slow answer and an
+# expensive one look the same to it -- so the machinery has to notice instead.
+SLOW_TOKENS_PER_SECOND = float(os.environ.get("OG_SLOW_TOKENS_PER_SECOND", "20"))
+
 # Floors between wakes, so one person typing steadily cannot wake it constantly.
 MIN_WAKE_INTERVAL = int(os.environ.get("OG_MIN_WAKE_INTERVAL", "1800"))
 MIN_REFLEX_INTERVAL = int(os.environ.get("OG_MIN_REFLEX_INTERVAL", "60"))

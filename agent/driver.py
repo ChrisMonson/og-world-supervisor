@@ -230,13 +230,20 @@ def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path
         readable = Path(transcript_path).with_suffix(".md")
         readable.write_text(render.header(transcript_path, events) + "\n" + render.render(events))
 
+    # The last word on the account's standing, if the CLI said anything at all.
+    limits = [event.get("rate_limit_info") for event in events
+              if event.get("type") == "rate_limit_event"]
+
     return {
         "text": (payload.get("result") or "").strip(),
         "steps": len([event for event in events if event.get("type") == "assistant"]),
         "turns": payload.get("num_turns"),
         "cost": payload.get("total_cost_usd"),
         "duration_ms": payload.get("duration_ms"),
+        "api_ms": payload.get("duration_api_ms"),
         "input_tokens": usage.get("input_tokens"),
         "output_tokens": usage.get("output_tokens"),
+        "cache_read": usage.get("cache_read_input_tokens"),
+        "rate_limit": limits[-1] if limits else None,
         "session_id": payload.get("session_id"),
     }

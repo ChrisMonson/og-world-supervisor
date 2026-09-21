@@ -170,6 +170,10 @@ def take_turn(kind, dry_run=False, force=False):
         print(f"[{kind}] turn failed: {error}", file=sys.stderr)
         return None
 
+    api_seconds = (outcome.get("api_ms") or 0) / 1000
+    output = outcome.get("output_tokens") or 0
+    rate = round(output / api_seconds, 1) if api_seconds else None
+
     record = {
         "kind": kind,
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -178,6 +182,10 @@ def take_turn(kind, dry_run=False, force=False):
         "elapsed": round(time.time() - started, 1),
         "turns": outcome["turns"],
         "cost": outcome["cost"],
+        "apiSeconds": round(api_seconds, 1),
+        "outputTokens": output,
+        "tokensPerSecond": rate,
+        "rateLimit": outcome.get("rate_limit"),
         "text": outcome["text"],
         "transcript": transcript.name,
     }
@@ -194,7 +202,19 @@ def take_turn(kind, dry_run=False, force=False):
 
     clear_halt()
 
-    print(f"[{kind}] {outcome['turns']} steps, {record['elapsed']}s, transcript at {transcript.name}")
+    print(f"[{kind}] {outcome['turns']} steps, {record['elapsed']}s, "
+          f"{rate if rate is not None else '?'} tok/s, transcript at {transcript.name}")
+
+    # Said plainly, because a turn that ran at a crawl is not a turn that went
+    # badly, and next morning the two are indistinguishable without this line.
+    if rate is not None and rate < config.SLOW_TOKENS_PER_SECOND:
+        share = api_seconds / record["elapsed"] if record["elapsed"] else 0
+        standing = (outcome.get("rate_limit") or {}).get("status", "unreported")
+        print(f"[{kind}] SLOW  served at {rate} tok/s against a floor of "
+              f"{config.SLOW_TOKENS_PER_SECOND}; {api_seconds:.0f}s of the turn's "
+              f"{record['elapsed']}s was spent waiting on the API ({share:.0%}), "
+              f"account standing {standing}. Nothing the caretaker did explains this.",
+              file=sys.stderr)
     print(f"[{kind}] {outcome['text'][:400]}")
 
     return record
