@@ -45,7 +45,6 @@ whatever you left at the bottom.
 
 You wake, and you are told what has changed since you last looked.
 
-A turn has a wall-clock limit, and you are told what it is when you wake. The
-`clock` tool says how long you have left. Nothing warns you as it approaches: if
-you run past it the turn is cut off where it stands, and anything you have
+A turn has a wall-clock limit. Every answer you get ends with what is left of
+it. If you run past it the turn is cut off where it stands, and anything you have
 already deployed stays deployed with no entry explaining why.

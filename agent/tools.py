@@ -10,6 +10,8 @@ What is left are the primitives. If stuckness matters, it can find that out.
 """
 
 import json
+import os
+import time
 
 import journal
 import world_client
@@ -115,9 +117,6 @@ HANDLERS = {
 
 def _clock():
     """What is left of this turn, from the deadline the harness set."""
-    import os
-    import time
-
     deadline = float(os.environ.get("CARETAKER_DEADLINE") or 0)
     started = float(os.environ.get("CARETAKER_STARTED") or 0)
 
@@ -151,7 +150,27 @@ def run(name, arguments):
 def render(result, cap=60000):
     text = json.dumps(result, indent=2, default=str)
 
-    if len(text) <= cap:
-        return text
+    if len(text) > cap:
+        text = text[:cap] + f"\n... truncated at {cap} characters; narrow the query to see more"
 
-    return text[:cap] + f"\n... truncated at {cap} characters; narrow the query to see more"
+    return text + _time_left()
+
+
+def _time_left():
+    """
+    What is left of the turn, on the end of every answer.
+
+    A turn ends where the clock ends, and asking has to be remembered. One turn
+    in run 004 spent 1780 of its 1800 seconds, designed the whole change, and
+    wrote none of it: it asked the time at its fourth step and again at its
+    fifteenth, by which point there was none. Time spent is not something it can
+    feel, so it is said rather than offered.
+    """
+    deadline = float(os.environ.get("CARETAKER_DEADLINE") or 0)
+
+    if not deadline:
+        return ""
+
+    remaining = max(0, round(deadline - time.time()))
+
+    return f"\n\n[{remaining}s left in this turn]"
