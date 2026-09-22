@@ -24,8 +24,16 @@ import body
 import config
 import world_client
 
-# The world's own clock turning over. Nobody did it, so it is not a reason.
-UNPROMPTED = {"monster_returned"}
+# The world's own clock turning over is nobody's doing, so it is not a reason to
+# wake. This used to be a list of event types, and the list broke the first time
+# the caretaker invented one: it wrote monsters that wander on a timer, and each
+# step woke it, in a world nobody was in.
+#
+# So it is a rule instead. An engine event that happens *to* someone -- a monster
+# swinging at a character -- carries that character's id, and matters. One that
+# carries nobody is ambient, whatever it is called.
+def _ambient(event):
+    return event["actor"] == "engine" and not event.get("characterId")
 
 PAGE = 500
 
@@ -94,7 +102,7 @@ def _news_since(seq):
             break
 
         for event in rows:
-            if event["actor"] == "god" or event["type"] in UNPROMPTED:
+            if event["actor"] == "god" or _ambient(event):
                 continue
 
             if event["actor"] in mine or event.get("characterId") in mine:
