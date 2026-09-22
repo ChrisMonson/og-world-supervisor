@@ -27,6 +27,11 @@ import render  # noqa: E402
 SUPERVISOR = Path(__file__).resolve().parent.parent
 STATE = Path(os.environ.get("STATE_DIR", SUPERVISOR / "state"))
 TURNS = STATE / "agent" / "turns"
+
+# The caretaker writes these in its working copy, which is the live world's
+# repository. Read straight from there so they are current rather than as of the
+# last commit -- philosophy.md in particular changes mid-turn.
+WORKSPACE = STATE / "workspace"
 TOKEN = os.environ.get("VIEWER_TOKEN", "")
 
 # A turn whose file has not been touched for this long is over, whatever the
@@ -110,6 +115,9 @@ a { color:var(--link); text-decoration:none; }
 .took { margin-left:auto; }
 .said { color:var(--dim); margin-top:3px; overflow-wrap:anywhere; }
 
+nav { display:flex; gap:14px; flex-wrap:wrap; }
+nav a { font-size:12px; }
+
 .live { color:var(--live); }
 .dot { display:inline-block; width:7px; height:7px; border-radius:50%;
        background:var(--live); margin-right:5px; animation:p 1.4s infinite; }
@@ -128,6 +136,11 @@ b { color:#fff; font-weight:600; }
     .took { margin-left:0; }
 }
 """
+
+
+NAV = ("<nav><a href='/'>turns</a><a href='/journal'>journal</a>"
+       "<a href='/file/philosophy.md'>philosophy</a>"
+       "<a href='/file/abilities.md'>abilities</a></nav>")
 
 
 def page(title, body, refresh=0):
@@ -172,7 +185,7 @@ def index():
     model = (STATE / "run-model").read_text().strip() if (STATE / "run-model").exists() else "?"
 
     body = (f"<header><h1>{html.escape(run)}</h1>"
-            f"<span class=meta>{html.escape(model)} · {len(found)} turns</span></header>"
+            f"<span class=meta>{html.escape(model)} · {len(found)} turns</span>{NAV}</header>"
             "<main>" + "".join(cards) + "</main>")
 
     return page(run, body, refresh=10 if any(e["live"] for e in found) else 30)
@@ -190,11 +203,65 @@ def turn(name):
         time.time() - path.stat().st_mtime < STALE_AFTER
 
     banner = '<span class="live"><span class="dot"></span>running</span>' if live else ""
-    body = (f"<header><h1>{html.escape(name)}</h1>{banner}</header>"
+    body = (f"<header><h1>{html.escape(name)}</h1>{banner}{NAV}</header>"
             f"<main><a class=back href='/'>← all turns</a>"
             f"<pre>{as_html(text)}</pre></main>")
 
     return page(name, body, refresh=5 if live else 0)
+
+
+def written(name):
+    """One of the two files it keeps for itself, as it stands right now."""
+    if name not in ("philosophy.md", "abilities.md"):
+        return None
+
+    path = WORKSPACE / name
+
+    if not path.exists():
+        return page(name, f"<header><h1>{name}</h1>{NAV}</header>"
+                          "<main><pre>Not written yet.</pre></main>")
+
+    size = path.stat().st_size
+    note = ""
+
+    if name == "philosophy.md" and size > 4000:
+        note = (f"<span class=meta>{size} characters, over the 4000 it is given "
+                "back when it wakes. What is past the cap is cut off.</span>")
+
+    body = (f"<header><h1>{name}</h1>{NAV}<span class=meta>{size} characters</span>"
+            f"</header><main>{note}<pre>{as_html(path.read_text())}</pre></main>")
+
+    return page(name, body)
+
+
+def journal(which=None):
+    """Its entries. One if named, otherwise the most recent with a list."""
+    entries = sorted((WORKSPACE / "journal").glob("*.md"), reverse=True)
+    entries = [e for e in entries if e.name != "README.md"]
+
+    if not entries:
+        return page("journal", f"<header><h1>journal</h1>{NAV}</header>"
+                               "<main><pre>Nothing written yet.</pre></main>")
+
+    if which:
+        chosen = next((e for e in entries if e.stem == which), None)
+        if chosen is None:
+            return None
+    else:
+        chosen = entries[0]
+
+    links = "".join(
+        f"<a class=turn href='/journal/{e.stem}'>"
+        f"<div class=top><span class=when>{when_reads(e.stem)}</span>"
+        f"<span class=took>{e.stat().st_size // 1024 or 1} KB</span></div></a>"
+        for e in entries if e is not chosen)
+
+    body = (f"<header><h1>journal</h1>{NAV}"
+            f"<span class=meta>{len(entries)} entries</span></header>"
+            f"<main><pre>{as_html(chosen.read_text())}</pre>"
+            f"<div class=h>Earlier</div>{links}</main>")
+
+    return page(f"journal · {chosen.stem}", body)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -211,6 +278,17 @@ class Handler(BaseHTTPRequestHandler):
 
         if path.startswith("/turn/"):
             body = turn(path[len("/turn/"):])
+            return self.send_page(body) if body else self.send_error(404)
+
+        if path == "/journal":
+            return self.send_page(journal())
+
+        if path.startswith("/journal/"):
+            body = journal(path[len("/journal/"):])
+            return self.send_page(body) if body else self.send_error(404)
+
+        if path.startswith("/file/"):
+            body = written(path[len("/file/"):])
             return self.send_page(body) if body else self.send_error(404)
 
         self.send_error(404)
