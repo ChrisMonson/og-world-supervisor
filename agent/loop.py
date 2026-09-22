@@ -197,6 +197,8 @@ def take_turn(kind, dry_run=False, force=False):
         "elapsed": round(time.time() - started, 1),
         "turns": outcome["turns"],
         "cost": outcome["cost"],
+        "model": config.REFLEX_MODEL if reflex else config.MODEL,
+        "effort": config.EFFORT,
         "apiSeconds": round(api_seconds, 1),
         "outputTokens": output,
         "tokensPerSecond": rate,

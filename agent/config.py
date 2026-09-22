@@ -16,6 +16,13 @@ WORLD_URL = os.environ.get("WORLD_URL", "http://localhost:5080")
 CARETAKER_TOKEN = os.environ.get("CARETAKER_TOKEN", "")
 
 MODEL = os.environ.get("OG_MODEL", "opus")
+
+# How hard it is allowed to think between steps. `high` is the CLI's own default,
+# so pinning it changes nothing today; it is pinned because nothing in a turn
+# record, a transcript or the stream's init event says what was used, and a
+# default that moved under us would be invisible afterwards. The same blindness
+# that ran 004 on Opus while every record said Sonnet.
+EFFORT = os.environ.get("OG_EFFORT", "high")
 # How far the caretaker can reach on a given turn: observe, act, or shape.
 REACH = os.environ.get("CARETAKER_REACH", "observe")
 

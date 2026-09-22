@@ -154,6 +154,7 @@ def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path
             "--disallowedTools", *DENIED,
             "--permission-mode", "bypassPermissions",
             "--model", model or config.MODEL,
+            "--effort", config.EFFORT,
         ]
 
         events = []

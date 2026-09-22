@@ -21,6 +21,8 @@
     "it can rewrite part of a file instead of all of it -- this time it is actually built",
     "a quiet world no longer stops waking it, because a world nobody has played is quiet forever",
     "the engine tests and the gate's smoke test no longer assert the contents of any particular world",
-    "what is left of the turn is on the end of every answer, rather than something to remember to ask for"
-  ]
+    "what is left of the turn is on the end of every answer, rather than something to remember to ask for",
+    "the effort level is pinned and recorded rather than taken from whatever the CLI defaults to"
+  ],
+  "effort": "high"
 }
