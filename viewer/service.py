@@ -90,28 +90,43 @@ STYLE = """
         --line:#272b32; --live:#6fd08c; --link:#8ab4f8; }
 * { box-sizing: border-box; }
 body { background:var(--bg); color:var(--fg); margin:0;
-       font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
-header { position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line);
-         padding:14px 20px; display:flex; gap:18px; align-items:baseline; flex-wrap:wrap; }
-h1 { font-size:15px; margin:0; font-weight:600; }
+       font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
+       -webkit-text-size-adjust:100%; }
+header { position:sticky; top:0; z-index:2; background:var(--bg);
+         border-bottom:1px solid var(--line); padding:12px 16px;
+         display:flex; gap:10px 14px; align-items:baseline; flex-wrap:wrap; }
+h1 { font-size:15px; margin:0; font-weight:600; overflow-wrap:anywhere; }
 .meta { color:var(--dim); font-size:12px; }
-main { padding:18px 20px 60px; max-width:900px; }
+main { padding:12px 16px 60px; max-width:900px; }
 a { color:var(--link); text-decoration:none; }
-a:hover { text-decoration:underline; }
-table { border-collapse:collapse; width:100%; }
-td, th { padding:6px 12px 6px 0; text-align:left; vertical-align:top;
-         border-bottom:1px solid var(--line); white-space:nowrap; }
-th { color:var(--dim); font-weight:500; font-size:12px; }
-td.wide { white-space:normal; color:var(--dim); }
+
+/* One turn: a row on a wide screen, a stacked card on a narrow one. */
+.turn { display:block; padding:11px 0; border-bottom:1px solid var(--line);
+        color:var(--fg); }
+.turn:active { background:#1b1e24; }
+.top { display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline; }
+.when { color:var(--link); }
+.kind { color:var(--dim); }
+.took { margin-left:auto; }
+.said { color:var(--dim); margin-top:3px; overflow-wrap:anywhere; }
+
 .live { color:var(--live); }
 .dot { display:inline-block; width:7px; height:7px; border-radius:50%;
-       background:var(--live); margin-right:6px; animation:p 1.4s infinite; }
+       background:var(--live); margin-right:5px; animation:p 1.4s infinite; }
 @keyframes p { 50% { opacity:.25 } }
-pre { white-space:pre-wrap; word-wrap:break-word; margin:0; }
+
+pre { white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word;
+      margin:0; font-size:13px; }
 code { color:#c3e88d; }
 b { color:#fff; font-weight:600; }
-.h { display:block; color:#fff; font-weight:600; margin:18px 0 4px; }
-.back { margin-bottom:14px; display:inline-block; }
+.h { display:block; color:#fff; font-weight:600; margin:16px 0 4px; }
+.back { display:inline-block; margin-bottom:12px; }
+
+@media (max-width:640px) {
+    body { font-size:13px; }
+    pre { font-size:12px; line-height:1.5; }
+    .took { margin-left:0; }
+}
 """
 
 
@@ -124,41 +139,43 @@ def page(title, body, refresh=0):
 
 
 def index():
-    rows = []
+    cards = []
 
-    for t in turns():
-        if t["live"]:
+    for entry in turns():
+        if entry["live"]:
             state = '<span class="live"><span class="dot"></span>running</span>'
-            detail = f"{t['bytes'] // 1024} KB so far"
-        elif t["abandoned"]:
-            state = "<span class=meta>unfinished</span>"
+            detail = f"{entry['bytes'] // 1024} KB so far"
+        elif entry["abandoned"]:
+            state = '<span class="meta">unfinished</span>'
             detail = ""
         else:
-            state = f"{t.get('elapsed', '?')}s"
-            rate = t.get("tokensPerSecond")
-            detail = f"{t.get('turns', '?')} steps"
-            if rate:
-                detail += f" · {rate} tok/s"
-            if t.get("cost"):
-                detail += f" · ${t['cost']:.2f}"
+            state = f"{entry.get('elapsed', '?')}s"
+            detail = f"{entry.get('turns', '?')} steps"
+            if entry.get("tokensPerSecond"):
+                detail += f" · {entry['tokensPerSecond']} tok/s"
+            if entry.get("cost"):
+                detail += f" · ${entry['cost']:.2f}"
 
-        said = (t.get("text") or "").strip().split("\n")[0][:110]
+        said = (entry.get("text") or "").strip().split("\n")[0][:160]
 
-        rows.append(
-            f"<tr><td><a href='/turn/{t['name']}'>{when_reads(t['when'])}</a></td>"
-            f"<td>{t['kind']}</td><td>{state}</td><td class=meta>{detail}</td>"
-            f"<td class=wide>{html.escape(said)}</td></tr>")
+        cards.append(
+            f"<a class=turn href='/turn/{entry['name']}'>"
+            f"<div class=top><span class=when>{when_reads(entry['when'])}</span>"
+            f"<span class=kind>{entry['kind']}</span>"
+            f"<span class=took>{state}</span></div>"
+            f"<div class=meta>{detail}</div>"
+            + (f"<div class=said>{html.escape(said)}</div>" if said else "")
+            + "</a>")
 
+    found = turns()
     run = (STATE / "current-run").read_text().strip() if (STATE / "current-run").exists() else "?"
     model = (STATE / "run-model").read_text().strip() if (STATE / "run-model").exists() else "?"
-    living = any(t["live"] for t in turns())
 
     body = (f"<header><h1>{html.escape(run)}</h1>"
-            f"<span class=meta>{html.escape(model)} · {len(rows)} turns</span></header>"
-            "<main><table><tr><th>when</th><th>kind</th><th>took</th><th></th>"
-            "<th>what it said</th></tr>" + "".join(rows) + "</table></main>")
+            f"<span class=meta>{html.escape(model)} · {len(found)} turns</span></header>"
+            "<main>" + "".join(cards) + "</main>")
 
-    return page(run, body, refresh=10 if living else 30)
+    return page(run, body, refresh=10 if any(e["live"] for e in found) else 30)
 
 
 def turn(name):
