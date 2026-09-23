@@ -42,6 +42,7 @@ fi
 
 say "run" "$(cat "$STATE_DIR/current-run" 2>/dev/null || echo '(none)')"
 say "run-model file" "$(cat "$STATE_DIR/run-model" 2>/dev/null || echo '(none)')"
+say "cli" "$(claude --version 2>/dev/null | awk '{print $1}')"
 say "effort" "$(cd "$SUPERVISOR_DIR/agent" && python3 -c "import config; print(config.EFFORT)" 2>/dev/null || echo unknown)"
 
 # The only honest answer to "what model is it running": what the model said it was.

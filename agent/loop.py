@@ -250,6 +250,8 @@ def take_turn(kind, dry_run=False, force=False):
         "cost": outcome["cost"],
         "model": config.REFLEX_MODEL if reflex else config.MODEL,
         "effort": config.EFFORT,
+        "servedModel": outcome.get("served_model"),
+        "cli": outcome.get("cli"),
         "apiSeconds": round(api_seconds, 1),
         "outputTokens": output,
         "tokensPerSecond": rate,

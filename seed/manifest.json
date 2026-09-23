@@ -5,7 +5,7 @@
   "briefings": {
     "both": "6d82cb12ea713945"
   },
-  "defaultModel": "opus",
+  "defaultModel": "claude-opus-5-5",
   "note": "The same empty room as genesis/v1, with the machinery around it corrected: both kinds of turn described to both, short turns handing on, the digest's opinion keys removed, and philosophy.md capped where it is written. The two genesis/v1 runs received the digest's opinions and short-turn steering the plan meant to remove; this is the first run that does not.",
   "reach": "everything the world is made of, on every kind of turn",
   "changedFromSeedV4": [
@@ -31,6 +31,9 @@
     "philosophy.md refuses writes that leave it over the cap, so the file and what is shown at waking are one thing",
     "commits carry a Turn: trailer saying which kind of turn made them",
     "the operator's Concise output style no longer applies; the caretaker runs on the default style",
-    "the digest reaches it without the unanswered, stuck, traffic and neverVisited keys"
-  ]
+    "the digest reaches it without the unanswered, stuck, traffic and neverVisited keys",
+    "the model is pinned by exact id, not by alias: 'opus' meant Opus 5 before a CLI update and Opus 5.5 after",
+    "the CLI version is recorded in the manifest and in every turn record"
+  ],
+  "cli": "2.1.280"
 }

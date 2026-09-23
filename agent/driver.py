@@ -238,6 +238,11 @@ def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path
         readable = Path(transcript_path).with_suffix(".md")
         readable.write_text(render.header(transcript_path, events) + "\n" + render.render(events))
 
+    # Which CLI took the turn. A new version can bring a new system prompt and new
+    # defaults, and an alias like "opus" can start meaning a different model after
+    # an update -- it did, between one check and the next.
+    init = next((e for e in events if e.get("type") == "system" and e.get("subtype") == "init"), {})
+
     # The last word on the account's standing, if the CLI said anything at all.
     limits = [event.get("rate_limit_info") for event in events
               if event.get("type") == "rate_limit_event"]
@@ -253,5 +258,7 @@ def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path
         "output_tokens": usage.get("output_tokens"),
         "cache_read": usage.get("cache_read_input_tokens"),
         "rate_limit": limits[-1] if limits else None,
+        "cli": init.get("claude_code_version"),
+        "served_model": init.get("model"),
         "session_id": payload.get("session_id"),
     }
