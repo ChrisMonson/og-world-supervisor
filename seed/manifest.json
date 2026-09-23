@@ -1,12 +1,12 @@
 {
-  "version": "genesis/v1",
+  "version": "genesis/v2",
   "worldTag": "genesis/v1",
   "worldSha": "45cb0d0c5b8728c35e28f2583b86928b75ed1c6f",
   "briefings": {
     "both": "6d82cb12ea713945"
   },
   "defaultModel": "opus",
-  "note": "A different experiment from the seed series. The world is one empty room and the agent authors everything: what is in it, what the rules are, what is worth doing. Nothing tells it what a world is for. The seed series compared runs against a fixed world; this one does not compare, it observes.",
+  "note": "The same empty room as genesis/v1, with the machinery around it corrected: both kinds of turn described to both, short turns handing on, the digest's opinion keys removed, and philosophy.md capped where it is written. The two genesis/v1 runs received the digest's opinions and short-turn steering the plan meant to remove; this is the first run that does not.",
   "reach": "everything the world is made of, on every kind of turn",
   "changedFromSeedV4": [
     "the world is one empty room with no name, no description and no exits",
@@ -24,11 +24,13 @@
     "the effort level is pinned and recorded rather than taken from whatever the CLI defaults to"
   ],
   "effort": "high",
-  "pendingForNextSeed": [
+  "changedFromGenesisV1": [
     "one briefing for both kinds of turn, each told the other exists; which kind this is is said in the opening",
     "a short turn's final reply is handed to the turns after it until a long turn has read it",
     "the opening no longer tells short turns to decide whether anything wants a response, or to reply in one line",
     "philosophy.md refuses writes that leave it over the cap, so the file and what is shown at waking are one thing",
-    "commits carry a Turn: trailer saying which kind of turn made them"
+    "commits carry a Turn: trailer saying which kind of turn made them",
+    "the operator's Concise output style no longer applies; the caretaker runs on the default style",
+    "the digest reaches it without the unanswered, stuck, traffic and neverVisited keys"
   ]
 }
