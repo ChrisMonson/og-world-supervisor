@@ -61,7 +61,7 @@ def write(text, seq):
     committed = _git(
         "-c", f"user.name={AUTHOR_NAME}",
         "-c", f"user.email={AUTHOR_EMAIL}",
-        "commit", "-q", "-m", f"Journal: {stamp}",
+        "commit", "-q", "-m", f"Journal: {stamp}\n\nTurn: long\n",
         check=False,
     )
 

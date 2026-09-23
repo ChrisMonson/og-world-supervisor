@@ -4,6 +4,7 @@ A git worktree on the proposed branch. Changes are written here, checked, and
 committed; nothing here is live until a deploy passes the gate.
 """
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -90,8 +91,32 @@ def read(relative):
     return path.read_text()
 
 
+def _within_cap(path, content):
+    """
+    philosophy.md is given back to it in full every time it wakes, up to a limit.
+    The limit used to apply only there -- it could write the file to any length,
+    and read all of it back -- so the file grew to two and a half times the cap
+    while the part it was shown at waking stayed fixed. Two views of one file,
+    and the turns that never read it acted on the shorter one.
+
+    Enforced here instead, there is only one view: what it writes is what it gets.
+    """
+    if path.resolve() != (ensure() / "philosophy.md").resolve():
+        return
+
+    limit = config.PHILOSOPHY_LIMIT
+
+    if len(content) > limit:
+        raise ValueError(
+            f"philosophy.md would be {len(content)} characters, and it holds "
+            f"{limit}. Nothing was changed. Keep what is worth carrying; "
+            f"{len(content) - limit} "
+            f"{'character has' if len(content) - limit == 1 else 'characters have'} to go.")
+
+
 def write(relative, content):
     path = _resolve(relative)
+    _within_cap(path, content)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content)
     return {"path": relative, "bytes": len(content)}
@@ -130,7 +155,9 @@ def replace(relative, find, put, count=1):
             f"found {found} times in {relative} but was asked to change {count}; "
             "nothing was changed. Give more of the surrounding text, or raise count.")
 
-    path.write_text(content.replace(find, put, count))
+    changed = content.replace(find, put, count)
+    _within_cap(path, changed)
+    path.write_text(changed)
 
     return {"path": relative, "replaced": found, "bytes": len(content) - len(find) * found + len(put) * found}
 
@@ -143,13 +170,22 @@ def status():
     return {"changed": changed, "diff": diff}
 
 
+def _trailer():
+    """
+    Which kind of turn made this commit, for whoever reads the history later.
+    The caretaker's own view of the history shows subjects only, so this is ours.
+    """
+    kind = os.environ.get("CARETAKER_TURN", "")
+    return f"\nTurn: {kind}\n" if kind else ""
+
+
 def commit(message, rationale):
     ensure()
 
     if not _git("status", "--porcelain").stdout.strip():
         return {"committed": False, "reason": "nothing has changed"}
 
-    body = f"{message}\n\n{rationale.strip()}\n"
+    body = f"{message}\n\n{rationale.strip()}\n" + _trailer()
     _git("add", "-A")
 
     result = _git(

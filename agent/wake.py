@@ -158,8 +158,10 @@ def should_wake(reflex=False, force=False):
             remaining = int(config.MIN_QUIET_WAKE_INTERVAL - waited)
             return False, f"nothing has happened, and {remaining}s of the quiet floor remain", mark
 
+        count = (f"{taken + 1} of {config.MAX_QUIET_TURNS}" if config.MAX_QUIET_TURNS
+                 else f"{taken + 1} in a row, no cap")
         return True, (f"nothing has happened since {mark['seq']}; "
-                      f"a turn with the world to itself ({taken + 1} of {config.MAX_QUIET_TURNS})"), mark
+                      f"a turn with the world to itself ({count})"), mark
 
     if waited < floor:
         remaining = int(floor - waited)

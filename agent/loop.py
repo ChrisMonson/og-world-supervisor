@@ -45,16 +45,58 @@ def clear_halt():
 
 
 def briefing(kind):
-    name = "briefing.md" if kind == "deliberate" else "briefing-reflex.md"
-    return (AGENT_DIR / name).read_text()
+    # One briefing for both kinds of turn. They used to have separate ones, and
+    # the short-turn briefing drifted into something that only made sense to
+    # whoever had written it: it referred to "longer" turns it never described,
+    # and to what it "always" had, to something with no memory. The long turns
+    # were never told the short ones existed at all. Which kind this is, is said
+    # in the opening instead.
+    return (AGENT_DIR / "briefing.md").read_text()
+
+
+def handed_on(limit=20):
+    """
+    What short turns said at the end, since the last long turn.
+
+    A short turn writes no journal. Before this, what it concluded went to our
+    log and nowhere it could read, and a long turn woke to find replies in the
+    world it had no account of -- and concluded, reasonably, that something
+    other than itself had made them.
+    """
+    records = []
+
+    for path in sorted(config.TURN_DIR.glob("*.json")):
+        try:
+            records.append(json.loads(path.read_text()))
+        except (OSError, json.JSONDecodeError):
+            continue
+
+    last_long = max((r["at"] for r in records if r.get("kind") == "deliberate"), default="")
+
+    return [r for r in records
+            if r.get("kind") == "reflex" and r.get("at", "") > last_long
+            and (r.get("text") or "").strip()][-limit:]
+
+
+# Categories the world's own digest computes, and which are opinions about what
+# is worth looking at rather than facts about what happened: that a command the
+# world did not answer is a request, that a run of them is someone stuck, that a
+# room nobody entered is a gap. The genesis runs were meant to start without
+# these -- the tools of the same names were removed -- and every opening message
+# carried them anyway, as keys in the digest, even when the lists were empty.
+# The facts stay: what happened, who was born and died, what was said.
+OPINIONS = {"unanswered", "stuck", "traffic", "neverVisited"}
 
 
 def opening(kind, digest, mark, recent):
+    digest = {key: value for key, value in digest.items() if key not in OPINIONS}
     limit = config.REFLEX_TIMEOUT if kind == "reflex" else config.DELIBERATION_TIMEOUT
+
+    which = "a long turn" if kind == "deliberate" else "a short turn"
 
     parts = [
         f"You are waking at {datetime.now(timezone.utc).isoformat(timespec='seconds')}.",
-        f"This turn is cut off after {limit} seconds. Ask `clock` for what is left.",
+        f"This is {which}. It is cut off after {limit} seconds.",
         "",
         f"You last looked at event {mark['seq']}. The world is now at event {digest['toSeq']}.",
         "",
@@ -102,14 +144,23 @@ def opening(kind, digest, mark, recent):
         parts += ["", "From philosophy.md, which you wrote:", "", concluded.strip()]
 
         if clipped:
-            parts += ["", "(That is the cap. The rest of the file was cut off here.)"]
+            parts += ["", f"(That is the cap. The file itself is longer -- it was written before "
+                          f"the limit held on writing -- and it will not accept an edit that leaves "
+                          f"it over {config.PHILOSOPHY_LIMIT} characters.)"]
 
     size = carried.abilities_size()
     parts += ["", f"abilities.md holds {size} characters." if size
               else "abilities.md is empty."]
 
+    passed = handed_on()
+
+    if passed:
+        parts += ["", "What your short turns said at the end, since the last long turn, oldest first:", ""]
+        for record in passed:
+            parts += [f"--- {record['at']} ---", record["text"].strip(), ""]
+
     if recent:
-        parts += ["", "Your last entries, oldest first:", ""]
+        parts += ["", "Your last journal entries, oldest first:", ""]
         for entry in recent:
             parts += [f"--- {entry['name']} ---", entry["text"].strip(), ""]
     elif kind == "deliberate":
@@ -118,15 +169,14 @@ def opening(kind, digest, mark, recent):
     if kind == "deliberate":
         parts += [
             "",
-            "Look into whatever is worth looking into, do what you judge worth doing,",
-            "then write your journal entry as your final message. The entry is just",
-            "your reply — do not wrap it in JSON or call a tool to save it.",
+            "Your final message is your journal entry. Just write it as your reply;",
+            "do not wrap it in JSON or call a tool to save it.",
         ]
     else:
         parts += [
             "",
-            "Decide whether anything here wants a response now. Then reply with one",
-            "short line saying what you did, or that you let it be.",
+            "Your final message is handed to the turns that follow. It is the only",
+            "part of this turn that is kept, so say in it whatever they should know.",
         ]
 
     return "\n".join(parts)
@@ -175,6 +225,7 @@ def take_turn(kind, dry_run=False, force=False):
             reach="shape",
             model=config.REFLEX_MODEL if reflex else config.MODEL,
             timeout=config.REFLEX_TIMEOUT if reflex else config.DELIBERATION_TIMEOUT,
+            kind="short" if reflex else "long",
         )
     except driver.NotSignedIn as error:
         halt(str(error))

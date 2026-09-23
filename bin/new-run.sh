@@ -25,7 +25,7 @@ SEED_SHA="$(world_git rev-parse --verify "$SEED_TAG^{commit}")" || fail "the see
 
 # A run from an edited briefing is not comparable with one from the frozen text.
 step "checking the briefings against the seed"
-for name in briefing.md briefing-reflex.md; do
+for name in briefing.md; do
     if ! cmp -s "$SEED_DIR/$name" "$SUPERVISOR_DIR/agent/$name"; then
         fail "agent/$name differs from the frozen seed copy. Either restore it, or cut a new seed version — runs from different briefings cannot be compared."
     fi

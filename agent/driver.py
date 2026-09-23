@@ -66,6 +66,11 @@ def child_environment():
 
 TURN_DEADLINE = {"at": 0.0, "started": 0.0}
 
+# Which kind of turn this is, passed to the tool server so that anything it
+# commits can say so. For us, reading the history afterwards: a burst of commits
+# from a four-minute turn looks exactly like one from a half-hour turn otherwise.
+TURN = {"kind": ""}
+
 
 def mcp_config():
     return {
@@ -82,6 +87,7 @@ def mcp_config():
                     "PYTHONPATH": str(AGENT_DIR),
                     "CARETAKER_DEADLINE": str(TURN_DEADLINE["at"]),
                     "CARETAKER_STARTED": str(TURN_DEADLINE["started"]),
+                    "CARETAKER_TURN": TURN["kind"],
                 },
             }
         }
@@ -124,7 +130,7 @@ def check_credentials(timeout=120):
 import render
 
 
-def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path=None):
+def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path=None, kind=""):
     """
     Takes one turn.
 
@@ -134,6 +140,7 @@ def run(system_prompt, opening, reach, model=None, timeout=1800, transcript_path
     record of what it chose to look at and what it concluded from it.
     """
     config.REACH = reach
+    TURN["kind"] = kind
     TURN_DEADLINE["started"] = time.time()
     TURN_DEADLINE["at"] = TURN_DEADLINE["started"] + timeout
 
