@@ -40,7 +40,10 @@ ID_C="og-director-identity-$SLOT"
 TOKEN="director-$SLOT"
 
 step "restoring $RUN's live engine"
-rm -rf "$WORK" && mkdir -p "$WORK"
+# Only what staging owns. Session logs and reports live beside these and must
+# survive a restage -- the first version cleared the whole directory, and took
+# every earlier session's record with it.
+rm -rf "$WORK/repo" "$WORK/world" && mkdir -p "$WORK"
 git clone -q "$SRC/world-repo.bundle" "$WORK/repo"
 git -C "$WORK/repo" checkout -q origin/live
 SHA="$(git -C "$WORK/repo" rev-parse --short=12 HEAD)"
