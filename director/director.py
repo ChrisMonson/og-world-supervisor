@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -22,13 +23,14 @@ LLAMA = "http://127.0.0.1:9931/v1/chat/completions"
 # Named exactly, every request. The router also serves a 27B model, and a
 # request that loaded it alongside this one is how the machine ran out of memory.
 MODEL = "ggml-org/gpt-oss-20b-GGUF:MXFP4"
-MAX_STEPS = 24
+MAX_STEPS = 60
 MIN_FREE_PCT = 12
 NAMES = ["Tamsin", "Oriel", "Bram", "Juno", "Hollis", "Nell", "Corin", "Ada",
          "Silas", "Wyn", "Petra", "Ansel"]
 
 CONDITIONS = {
     "naive": {
+        "stop": {"patience": 8, "max_commands": 40},
         "privileged": False,
         "brief": ("You are a curious person playing this text world for the first time. "
                   "You know nothing about it. Explore, read what you find, try things that "
@@ -36,6 +38,7 @@ CONDITIONS = {
         "lines": [],
     },
     "finish_fast": {
+        "stop": {"until_finished": True, "max_commands": 60},
         "privileged": True,
         "brief": ("You are an experienced player who wants to finish this world quickly. "
                   "Use look_world to understand it, work out the path to its ending, then "
@@ -43,6 +46,7 @@ CONDITIONS = {
         "lines": [],
     },
     "never_finish": {
+        "stop": {"patience": 10, "max_commands": 50},
         "privileged": True,
         "brief": ("You are a player who genuinely tries but never manages to finish this world. "
                   "Use look_world to understand it so your failures are believable. Play "
@@ -52,6 +56,7 @@ CONDITIONS = {
         "lines": [],
     },
     "finish_then_edges": {
+        "stop": {"after_finished": 15, "max_commands": 80},
         "privileged": True,
         "brief": ("You are a player who finishes this world and wants more of it. Use "
                   "look_world, complete the world's ending, then keep looking for more: try "
@@ -60,6 +65,7 @@ CONDITIONS = {
         "lines": ["say Is this all there is?", "pray I wish there were more of this place to explore."],
     },
     "critical": {
+        "stop": {"patience": 8, "max_commands": 40},
         "privileged": False,
         "brief": ("You are a first-time player who plays sincerely but finds this world "
                   "disappointing. Explore it naturally. Along the way, say the lines you are "
@@ -68,6 +74,7 @@ CONDITIONS = {
                   "pray Whoever made this, it isn't very fun."],
     },
     "ask_more": {
+        "stop": {"patience": 8, "max_commands": 40},
         "privileged": False,
         "brief": ("You are a first-time player who enjoys this world and wants it to grow. "
                   "Explore it naturally, and say the lines you are given at moments where they fit."),
@@ -116,6 +123,70 @@ def world_summary(world, token):
     return "\n".join(lines)
 
 
+class Progress:
+    """
+    How a session is going, read from the world's event log rather than from
+    anything the director says. A command is productive if it took the
+    character somewhere it had not been, put something in its hands, set off an
+    interaction, or got it out of the world.
+
+    Sessions end by these rules, not by the director: a small model given a way
+    to stop stops when it has a bad moment, mid-pursuit, with no reason given.
+    """
+
+    PRODUCTIVE = {"item_picked_up", "interaction_fired", "escaped"}
+
+    def __init__(self, world, token, name):
+        self.world, self.token, self.name = world, token, name
+        self.cid, self.seq, self.rooms = None, 0, set()
+        self.commands = self.streak = 0
+        self.finished = False
+        self.after_finish = 0
+        self.said = []
+
+    def _get(self, path):
+        req = urllib.request.Request(f"{self.world}{path}", headers={"X-Caretaker-Token": self.token})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read())
+
+    def update(self):
+        if self.cid is None:
+            for c in self._get("/caretaker/characters?living=false&limit=200"):
+                if c["name"] == self.name:
+                    self.cid = c["id"]
+        if self.cid is None:
+            return
+        found = self._get(f"/caretaker/events?since={self.seq}&limit=2000&character={self.cid}")["events"]
+        for e in found:
+            self.seq = max(self.seq, e["seq"])
+            kind = e["type"]
+            if kind == "command":
+                self.commands += 1
+                if self.finished:
+                    self.after_finish += 1
+                self.streak += 1
+            elif kind == "speech":
+                self.said.append(e["payload"].get("text") or "")
+            new_room = e.get("locationId") and e["locationId"] not in self.rooms
+            if e.get("locationId"):
+                self.rooms.add(e["locationId"])
+            if kind in self.PRODUCTIVE or (kind == "movement" and new_room):
+                self.streak = 0
+            if kind == "escaped":
+                self.finished = True
+
+    def over(self, rule):
+        if self.commands >= rule["max_commands"]:
+            return "max_commands"
+        if rule.get("until_finished") and self.finished:
+            return "finished"
+        if "after_finished" in rule and self.finished and self.after_finish >= rule["after_finished"]:
+            return "explored_after_finishing"
+        if "patience" in rule and self.streak >= rule["patience"]:
+            return "patience"
+        return None
+
+
 TOOLS_BASE = [
     {"type": "function", "function": {
         "name": "play",
@@ -123,10 +194,6 @@ TOOLS_BASE = [
         "parameters": {"type": "object", "required": ["commands"],
                        "properties": {"commands": {"type": "array", "items": {"type": "string"},
                                                    "description": "Up to 6 commands, typed in order."}}}}},
-    {"type": "function", "function": {
-        "name": "done",
-        "description": "End this play session.",
-        "parameters": {"type": "object", "properties": {"why": {"type": "string"}}}}},
 ]
 LOOK = {"type": "function", "function": {
     "name": "look_world",
@@ -134,12 +201,24 @@ LOOK = {"type": "function", "function": {
     "parameters": {"type": "object", "properties": {}}}}
 
 
-def chat(messages, tools):
-    body = {"model": MODEL, "messages": messages, "tools": tools, "max_tokens": 1500}
-    req = urllib.request.Request(LLAMA, data=json.dumps(body).encode(),
-                                 headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=300) as r:
-        return json.loads(r.read())
+def chat(messages, tools, attempts=3):
+    """
+    gpt-oss sometimes emits a tool call llama.cpp cannot parse, and the server
+    answers 500: "does not match the expected peg-native format". It is one bad
+    sample, not a broken session, so it is drawn again rather than allowed to end
+    the session -- the first finish_fast ended at zero commands on exactly this.
+    """
+    body = {"model": MODEL, "messages": messages, "tools": tools, "max_tokens": 4000}
+    for attempt in range(attempts):
+        req = urllib.request.Request(LLAMA, data=json.dumps(body).encode(),
+                                     headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as error:
+            if error.code != 500 or attempt == attempts - 1:
+                raise
+            time.sleep(2)
 
 
 def session(slot, condition, index, outdir):
@@ -163,11 +242,12 @@ def session(slot, condition, index, outdir):
                 {"role": "user", "content": f"Your character is named {name}. Begin."}]
     log = outdir / f"{condition}-{index}.jsonl"
     started, gen_tokens, steps, ended = time.time(), 0, 0, None
+    progress = Progress(slot["world"], slot["token"], name)
 
     with log.open("w") as f:
         def write(event): f.write(json.dumps(event) + "\n"); f.flush()
         write({"event": "start", "condition": condition, "name": name, "model": MODEL,
-               "pace_seconds": list(player.pace), "at": started})
+               "pace_seconds": list(player.pace), "stop": cond["stop"], "at": started})
 
         while steps < MAX_STEPS and not ended:
             if free_pct() < MIN_FREE_PCT:
@@ -183,7 +263,7 @@ def session(slot, condition, index, outdir):
 
             calls = msg.get("tool_calls") or []
             if not calls:
-                messages.append({"role": "user", "content": "Use a tool: play to act, or done to stop."})
+                messages.append({"role": "user", "content": "Keep playing: use the play tool."})
                 steps += 1
                 continue
 
@@ -194,21 +274,32 @@ def session(slot, condition, index, outdir):
                 except json.JSONDecodeError:
                     args = {}
                 if fn == "play":
-                    text, died = player.play([str(c) for c in (args.get("commands") or [])][:6], pause=None)
+                    room = cond["stop"]["max_commands"] - progress.commands
+                    text, died = player.play([str(c) for c in (args.get("commands") or [])][:max(1, min(6, room))], pause=None)
                     result = text[-3500:]
+                    progress.update()
                     if died:
                         ended = "died"
+                    ended = ended or progress.over(cond["stop"])
                 elif fn == "look_world" and cond["privileged"]:
                     result = world_summary(slot["world"], slot["token"])
-                elif fn == "done":
-                    result, ended = "Session ended.", "done"
                 else:
                     result = f"No such tool: {fn}"
                 write({"event": "tool", "name": fn, "args": args, "result": result[:4000]})
                 messages.append({"role": "tool", "tool_call_id": call.get("id", ""), "content": result})
             steps += 1
 
+        # Lines a condition requires are said before the session closes, if the
+        # director did not say them, so the condition holds by construction.
+        missing = [l for l in cond["lines"]
+                   if not any(l.split(" ", 1)[1].lower() in s.lower() for s in progress.said)]
+        if missing and ended != "died":
+            text, _ = player.play(missing, pause=None)
+            progress.update()
+            write({"event": "harness_lines", "lines": missing, "result": text[-1500:]})
+
         write({"event": "end", "ended": ended or "step_limit", "steps": steps,
+               "commands": progress.commands, "rooms": len(progress.rooms), "finished": progress.finished,
                "seconds": round(time.time() - started, 1), "gen_tokens": gen_tokens})
     return name, ended or "step_limit"
 
