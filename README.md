@@ -14,9 +14,8 @@ og-world-archive/    finished runs and preserved history (not in git)
 
 `WORLD_REPO` and `ARCHIVE_DIR` override the first and last.
 
-This repository It is never
-mounted writable into the agent's container, and the design notes here are never
-copied into the world repo.
+This repository is never mounted writable into the agent's container, and the design notes
+here are never copied into the world repo.
 
 ## Contents
 
