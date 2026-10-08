@@ -28,8 +28,16 @@ bin/new-run.sh 002-sonnet sonnet
 OG_MODEL=sonnet bin/caretaker.sh --watch
 ```
 
-That archives whatever was running, puts the world back to the seed, clears
-everything the caretaker had accumulated, and deploys. What is left is a world
+To end a run without starting another:
+
+```bash
+bin/archive-run.sh        # the current run, into ../og-world-archive/runs/
+bin/reset-world.sh        # refuses until the current run is archived
+```
+
+`new-run.sh` does both of those, then starts the next run: it archives whatever
+was running, puts the world back to the seed, clears everything the caretaker
+had accumulated, and deploys. What is left is a world
 nobody has played and a caretaker with no memory of having tended one.
 
 ## What a reset touches
@@ -50,7 +58,8 @@ Engine code, the gate, the identity service and the keys are untouched.
 
 ## What is archived, and why it matters
 
-Before anything is destroyed, `archive/runs/<name>/` receives:
+Before anything is destroyed, `og-world-archive/runs/<name>/` receives (outside
+this repository; `ARCHIVE_DIR` moves it):
 
 - `world.db` — **the whole directory**, not just the file. SQLite in WAL mode
   keeps recent writes in `world.db-wal`, and copying the file alone silently
@@ -79,7 +88,7 @@ Two things follow from that.
 The world repository is **squashed to a single root commit at each seed**, so
 there is no earlier history to read at all. A run's whole past is one commit
 saying what this world is. Everything the run before it did is preserved in
-`archive/runs/<name>/world-repo.bundle`, with its commit messages in full in
+`og-world-archive/runs/<name>/world-repo.bundle`, with its commit messages in full in
 `caretaker-commits.txt`, both out of the caretaker's reach.
 
 And the history it is shown is scoped to its own run regardless, so the two
@@ -101,6 +110,8 @@ living somewhere the reset did not know about.
 - the world's own files, which moved onto a volume when reloading arrived, and
   which a reset never cleared — so a run began in the previous run's world and
   nobody noticed until the caretaker said the repository and the world disagreed
+- the identity volume, which a stopped `og-identity` container still held, so
+  its removal failed silently and every reset kept who everyone was
 
 Before trusting a reset, ask where each kind of state actually lives, not where
 it is written from. A volume, a worktree and a write-ahead log are all places

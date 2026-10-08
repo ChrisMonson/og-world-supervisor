@@ -3,7 +3,18 @@
 The supervisor plane for [og-world](../og-world): everything the caretaker agent
 must not be able to read or change.
 
-This repository is private to the humans running the experiment. It is never
+This repository is private to the humans running the experiment. It expects
+three directories side by side:
+
+```
+og-world/            the world repository, which the caretaker tends
+og-world-supervisor/ this one
+og-world-archive/    finished runs and preserved history (not in git)
+```
+
+`WORLD_REPO` and `ARCHIVE_DIR` override the first and last.
+
+This repository It is never
 mounted writable into the agent's container, and the design notes here are never
 copied into the world repo.
 
@@ -17,7 +28,6 @@ identity/     the identity service: tokens in, per-connection tickets out
 agent/        the caretaker: its briefing, its tools, its loop
 bin/          deploy, promote, rollback, watchdog, caretaker
 compose/      container definitions for both planes
-archive/      preserved history, including og-world before its scrub
 state/        runtime state: snapshots, logs, worktrees, watermark (not committed)
 ```
 
@@ -88,11 +98,17 @@ Standing habit: **mechanism in the world repo, intent in this one.**
 
 ## Archive
 
-`archive/og-world-prescrub.bundle` holds og-world's first two commits, before
-design documentation was removed from it and its history rewritten. Restore with:
+Finished runs and other preserved history live in `../og-world-archive`, outside
+any repository. They are the experiment's output, they are large, and they hold
+full transcripts; none of it is committed. Back that directory up separately.
+
+`og-world-archive/og-world-prescrub.bundle` holds og-world's first two commits,
+before design documentation was removed from it and its history rewritten. It
+undoes that scrub, so it must never be placed anywhere the world repo is
+published. Restore with:
 
 ```bash
-git clone archive/og-world-prescrub.bundle og-world-prescrub
+git clone ../og-world-archive/og-world-prescrub.bundle og-world-prescrub
 ```
 
 ## Runs

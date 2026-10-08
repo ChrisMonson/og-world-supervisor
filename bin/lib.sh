@@ -5,6 +5,11 @@ SUPERVISOR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORLD_REPO="${WORLD_REPO:-$(cd "$SUPERVISOR_DIR/../og-world" && pwd)}"
 
 STATE_DIR="${STATE_DIR:-$SUPERVISOR_DIR/state}"
+
+# Finished runs live outside this repository: they are the experiment's output,
+# not its machinery, and are far too large and too personal to commit.
+ARCHIVE_DIR="${ARCHIVE_DIR:-$(cd "$SUPERVISOR_DIR/.." && pwd)/og-world-archive}"
+ARCHIVE="${ARCHIVE:-$ARCHIVE_DIR/runs}"
 SNAPSHOT_DIR="${SNAPSHOT_DIR:-$STATE_DIR/snapshots}"
 LOG_DIR="${LOG_DIR:-$STATE_DIR/logs}"
 WORKTREE_DIR="${WORKTREE_DIR:-$STATE_DIR/worktrees}"

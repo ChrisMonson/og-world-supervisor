@@ -13,8 +13,6 @@
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-ARCHIVE="${ARCHIVE:-$SUPERVISOR_DIR/archive/runs}"
-
 NAME="${1:-$(cat "$STATE_DIR/current-run" 2>/dev/null || true)}"
 [ -n "$NAME" ] || fail "no run to archive, and none named"
 
@@ -72,5 +70,5 @@ world_git log --all --author='The Caretaker' --format='%H %ad%n%n%s%n%n%b%n---' 
 world_git log --all --format='%h %ad %s' --date=short -- 'src/' \
     > "$OUT/engine-changes.log" 2>/dev/null || true
 
-log "PASS  archived to archive/runs/$NAME"
+log "PASS  archived to $OUT"
 log "      $(ls "$OUT/journal" 2>/dev/null | wc -l | xargs) journals, $(ls "$OUT"/turns/*.json 2>/dev/null | wc -l | xargs) turns"

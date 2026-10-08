@@ -26,7 +26,7 @@ fi
 
 RUN="${1:?archived run name required}"
 SLOT="${2:?slot required}"
-SRC="$SUPERVISOR_DIR/archive/runs/$RUN"
+SRC="$ARCHIVE/$RUN"
 [ -f "$SRC/world-repo.bundle" ] || fail "no bundle for $RUN"
 [ -d "$SRC/world" ] || fail "no world files for $RUN"
 
