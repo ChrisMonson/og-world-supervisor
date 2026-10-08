@@ -85,6 +85,20 @@ the fact that it is observed live only in this repository.
   the whole world repository, engine included. The decision not to announce
   that, and why, is in `docs/phase-5.md`.
 
+### If you run it yourself
+
+This is a toy, run for interest, and no further runs are planned here. The
+code is here for anyone who wants to try it.
+
+One thing to know first. Publishing this repository undoes part of what it
+describes: the caretaker is not meant to know why the world exists or that it
+is watched, and this README says both. The world's container can reach the
+internet, and a caretaker with the engine in reach can write code that reads
+the web. Nothing stops it finding this page. That was accepted when the
+repositories were made public. If it matters for your runs, block outbound
+traffic from the world and gate containers first, and expect that players who
+have read this may tell it.
+
 | Doc | |
 |---|---|
 | [plan.md](docs/plan.md) | the architecture, the phases, what the caretaker is not told |
@@ -440,3 +454,7 @@ director/stage.sh <archived-run> <slot>     # stand it up, isolated (slot 0-9)
 director/run_test.sh <archived-run> [conditions...]
 director/stage.sh stop <slot>
 ```
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
