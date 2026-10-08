@@ -3,7 +3,7 @@
 An experiment in giving an AI agent real authority over a world that people
 live in, and watching what it does with it.
 
-[og-world](../og-world) is a persistent multiplayer text world: people connect
+[og-world](https://github.com/ChrisMonson/og-world) is a persistent multiplayer text world: people connect
 from a browser, move through it, fight, pick things up, talk to each other, and
 die once. The **caretaker** is a Claude model, woken on a schedule and when
 things happen, that can change anything about that world: its places and
@@ -111,8 +111,7 @@ have read this may tell it.
 
 ## Layout
 
-This repository is private to the humans running the experiment. It expects
-three directories side by side:
+It expects three directories side by side:
 
 ```
 og-world/            the world repository, which the caretaker tends
@@ -147,8 +146,8 @@ and the `claude` CLI signed in. The .NET SDK is not needed here: the world is bu
 inside Docker.
 
 ```bash
-git clone <og-world> og-world
-git clone <og-world-supervisor> og-world-supervisor
+git clone https://github.com/ChrisMonson/og-world.git
+git clone https://github.com/ChrisMonson/og-world-supervisor.git
 mkdir og-world-archive
 cd og-world-supervisor
 
