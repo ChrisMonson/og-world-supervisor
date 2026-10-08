@@ -21,14 +21,37 @@ here are never copied into the world repo.
 
 ```
 docs/         design notes, the experiment's rationale, how runs work
-seed/         the fixed starting point: frozen briefings and a manifest
+seed/         the fixed starting point: the frozen briefing and a manifest
 gate/         the health contract: nothing reaches the world without passing it
 identity/     the identity service: tokens in, per-connection tickets out
 agent/        the caretaker: its briefing, its tools, its loop
-bin/          deploy, promote, rollback, watchdog, caretaker
+bin/          runs, deploys, rollback, watchdog, the caretaker, reading its turns
+director/     scripted players for re-staging an archived world
+viewer/       a read-only web view of the caretaker's turns
 compose/      container definitions for both planes
-state/        runtime state: snapshots, logs, worktrees, watermark (not committed)
+state/        runtime state: keys, snapshots, logs, worktrees (not committed)
 ```
+
+## Getting started
+
+Needs Docker, Python 3 (developed on 3.14) with `pip install -r requirements.txt`,
+and the `claude` CLI signed in. The .NET SDK is not needed here: the world is built
+inside Docker.
+
+```bash
+git clone <og-world> og-world
+git clone <og-world-supervisor> og-world-supervisor
+mkdir og-world-archive
+cd og-world-supervisor
+
+bin/init-keys.sh                         # mints the identity and caretaker secrets
+bin/caretaker.sh --check                 # confirms the CLI can take a turn
+bin/new-run.sh <name>                    # archives, resets to the seed, deploys
+bin/caretaker.sh --watch                 # starts tending it
+```
+
+The world is then at `http://localhost:5080`. `bin/verify-run.sh` reports what
+is actually running, read from live state rather than from what was intended.
 
 ## The deploy cycle
 
@@ -79,8 +102,8 @@ world does not stay dead overnight while nobody is watching.
 
 ## What rolls back, and what does not
 
-Code rolls back. Data does not. Deploys and rollbacks leave `/data` and
-`/identity` alone, so reverting a bad change never costs anyone their progress —
+Code rolls back. Data does not. Deploys and rollbacks leave the world's
+database and the identity service's volume alone, so reverting a bad change never costs anyone their progress —
 verified by playing a character, reverting underneath it, and finding it intact.
 
 This is also why migrations are additive only: a migration that drops a column
@@ -114,7 +137,12 @@ git clone ../og-world-archive/og-world-prescrub.bundle og-world-prescrub
 
 A run is one world tended from birth by one caretaker, from a fixed starting
 point. `bin/new-run.sh <name> [model]` archives whatever was running, returns
-the world to the seed, and clears the caretaker's memory of it.
+the world to the seed, and clears the caretaker's memory of it. To end a run
+without starting another, `bin/archive-run.sh` then `bin/reset-world.sh`.
+
+`bin/notice.sh "..."` leaves the caretaker a note about the machinery: something
+that stepped in or went wrong that it could not have known. Facts about the
+substrate only, never direction about the world.
 
 See [docs/runs.md](docs/runs.md) for what a reset touches, what is archived, and
 why runs are only loosely comparable without a scripted player.
@@ -158,11 +186,17 @@ is never passed into a world container.
 ## The caretaker
 
 ```bash
-bin/caretaker.sh reflex                 # a brief turn: may speak, may help someone
-bin/caretaker.sh deliberate             # a full turn: may reshape the world
+bin/caretaker.sh reflex                 # a short turn
+bin/caretaker.sh deliberate             # a long turn
 bin/caretaker.sh <kind> --dry-run       # assemble it and print it, calling nothing
+bin/caretaker.sh <kind> --force         # take a turn even if nothing has happened
 bin/caretaker.sh --watch                # keep taking turns as the world earns them
+bin/caretaker.sh --check                # check the CLI's credentials and stop
 ```
+
+The model comes from the run (`state/run-model`, set by `new-run.sh`) unless
+`OG_MODEL` overrides it, and is pinned by exact id. `agent/config.py` holds
+every other setting, each overridable from the environment.
 
 ### Credentials
 
@@ -198,20 +232,18 @@ The world keeps running while it is stopped. Only its tending pauses.
 
 ### Two tempos
 
-| | reflex | deliberate |
+| | short (reflex) | long (deliberate) |
 |---|---|---|
-| wakes | often, on activity | rarely |
+| wakes | on activity | about every half hour, whether or not anything happened |
 | floor | 60s | 30 min |
-| reach | look, speak, change a person | all of that, plus the world's files |
-| keeps | nothing | a journal entry |
+| lasts | up to 4 min | up to 30 min |
+| reach | everything | everything |
+| keeps | its final reply, until a long turn has read it | a journal entry |
 
-Without the split, whichever it found more pressing would eat the whole budget:
-answering people would starve building, or building would leave people talking
-to nothing.
-
-Its reflex briefing says plainly that silence is the default and that speaking is
-the exception it chooses to make. A world where a voice comes out of the air
-every few minutes is a worse world than one where it almost never does.
+Both kinds have the same reach and are told the other exists. They differ in
+time and in where what they say at the end goes. Without the split, whichever
+it found more pressing would eat the whole budget: answering people would starve
+building, or building would leave people talking to nothing.
 
 ### What it can reach
 
@@ -220,15 +252,19 @@ The tools are served as an MCP server over stdio and given to the CLI with
 CLI would otherwise bring — shell, files, search, subagents — is denied by name.
 The turn runs in an empty temporary directory with a sanitised environment.
 
-Three reaches, and a turn is started with exactly one:
+The server knows three reaches, enforced on every call and not only by what it
+advertises. Both kinds of turn are currently started with `shape`.
 
-- **observe** — thirteen read-only tools
-- **act** — those, plus speech and changing one living person
-- **shape** — those, plus the world's data files, commit, deploy and rollback
+- **observe** — nine read-only tools: events, who is present, characters, the
+  world, a location, the clock, past journal entries
+- **act** — those, plus `speak`, `adjust` (change one living person), and
+  `play`, which takes a character into the world as any player would: visible,
+  unprivileged, and mortal
+- **shape** — those, plus reading and writing files, validating, committing,
+  deploying and rolling back
 
-The reach is enforced by the server, not only by which tools it advertises: a
-call to something outside the current reach is refused. File paths are confined
-to the world's data directory, so this tier cannot touch the engine.
+Files are the whole world repository, engine included. `.git`, `.claude`, `bin`
+and `obj` are never listed and never readable: `.git` holds every earlier world.
 
 ### How a change reaches the world
 
@@ -244,8 +280,11 @@ caretaker back up.
 
 ### Waking
 
-The world's event log carries a monotonic sequence. It wakes when that sequence
-has advanced past what it last saw and the floor between turns has passed:
+The world's event log carries a monotonic sequence. A short turn wakes when that
+sequence has advanced past what it last saw and its floor has passed. A long
+turn wakes on its floor whether or not anything happened, because a world nobody
+has played yet is quiet forever (`OG_MAX_QUIET_TURNS` caps that; 0, the default,
+means no cap).
 
 ```sql
 SELECT COALESCE(MAX(seq), 0) FROM events WHERE actor <> 'god';
@@ -257,13 +296,13 @@ events rather than losing them.
 
 ### What it sees
 
-A digest of everything since it last looked — who was born, who died and to
-what, what was said, what went unanswered, who is stuck, where people go, which
-places nobody has walked into — and thirteen read-only tools to look further.
+On waking, a digest of what happened since it last looked: who was born, who
+died and to what, what was said, the event range. Then its recent turns'
+handoffs and `philosophy.md`, and the tools to look further.
 
-The digest is a starting view, never a filter. Every list reports the total it
-was drawn from, and the raw event feed stays available unfiltered, so a summary
-is never a wall.
+The digest carries facts only. The world computes opinions too (`unanswered`,
+`stuck`, `traffic`, `neverVisited`), which presume what is worth looking at, and
+`agent/loop.py` strips them before the caretaker sees anything.
 
 It reads the world over HTTP through a token-gated route. That route reads the
 world database, which has no account data in it, so there is nothing there to
@@ -278,6 +317,11 @@ bin/turns.sh 3            # the third from the end
 bin/turns.sh 3 --full     # without summarising what it saw
 ```
 
+`bin/viewer.sh` serves the same from a browser, read-only and on localhost
+unless `VIEWER_HOST` says otherwise. `bin/throughput.sh` reports how fast turns
+were served, which is how a slow model window is told apart from an expensive
+turn.
+
 The raw stream is kept as it was, in `.transcript.jsonl`. Alongside it sits an
 account of the same turn: what it looked at, what came back, what it changed and
 what it said — with large results summarised, since a two hundred event log tells
@@ -286,12 +330,28 @@ you nothing printed in full.
 ### Its journal
 
 Entries are written into the world repository and committed as `The Caretaker`,
-so `git log --author` separates them from ours. The journal is the only thing
-that carries between turns: context resets every time it wakes.
+so `git log --author` separates them from ours. Context resets every time it
+wakes; what carries is the journal, the short turns' handoffs, and two files it
+keeps in the world repo: `abilities.md`, for what it has found its tools can do,
+and `philosophy.md`, what it has concluded, capped at 4000 characters and shown
+to it on every waking.
 
 ### Its briefing
 
-`agent/briefing.md` tells it that it tends a world, how the world works, that
-characters die once and for good, and that it can currently only observe. It
-does not tell it that it is being watched, what is being measured, or anything
-about the machinery around it.
+`agent/briefing.md`, frozen in `seed/`, is one briefing for both kinds of turn.
+It tells the caretaker the world is its to make, that entities will arrive, how
+it wakes, and what carries between wakings. Its tools are given by name and
+little else. It is not told that characters die once, that it is being watched,
+what is being measured, or anything about the machinery around it.
+
+## The director
+
+`director/` re-stages an archived run and plays it with scripted players driven
+by a local model (llama.cpp on port 9931), so runs can be compared under the
+same players rather than whoever happened to show up.
+
+```bash
+director/stage.sh <archived-run> <slot>     # stand it up, isolated (slot 0-9)
+director/run_test.sh <archived-run> [conditions...]
+director/stage.sh stop <slot>
+```

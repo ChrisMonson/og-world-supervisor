@@ -1,7 +1,7 @@
 # Runs
 
 A run is one world, tended from birth by one caretaker, from a fixed starting
-point. Runs are meant to be comparable: same world, same briefings, so that what
+point. Runs are meant to be comparable: same world, same briefing, so that what
 differs between them is the mind doing the tending.
 
 ## The seed
@@ -9,17 +9,17 @@ differs between them is the mind doing the tending.
 `seed/manifest.json` names everything that defines a starting point:
 
 - the world repository at tag `seed/v1`
-- the two briefings, frozen in `seed/`
+- the briefing, frozen in `seed/`
 - the default model
 
-`bin/new-run.sh` refuses to start if `agent/briefing.md` or
-`agent/briefing-reflex.md` differ from the frozen copies. A run taken from an
+`bin/new-run.sh` refuses to start if `agent/briefing.md` differs from the
+frozen copy. A run taken from an
 edited briefing cannot be compared with one taken from the original, and the
 check exists so that is a deliberate act rather than something that happens by
 drift.
 
-**To change the seed**, edit the briefings or the world, tag `seed/v2`, copy the
-briefings into `seed/`, and update the manifest. Do not quietly edit in place.
+**To change the seed**, edit the briefing or the world, tag `seed/v2`, copy the
+briefing into `seed/`, and update the manifest. Do not quietly edit in place.
 
 ## Starting a run
 
